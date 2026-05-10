@@ -1,0 +1,28 @@
+model Notification {
+  id             Int       @id @default(autoincrement())
+  type           String
+  notifiableType String    @map("notifiable_type")
+  notifiableId   Int       @map("notifiable_id")
+  data           Json
+  readAt         DateTime? @map("read_at") @db.Timestamp(0)
+  isRead         Boolean   @default(false) @map("is_read")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([notifiableType, notifiableId])
+  @@map("notifications")
+}
+
+model PushNotification {
+  id        Int      @id @default(autoincrement())
+  title     String?
+  titleI18n Json?    @map("title_i18n")
+  message   String?  @db.Text
+  messageI18n Json?  @map("message_i18n")
+  forRider  Boolean  @default(false) @map("for_rider")
+  forDriver Boolean  @default(false) @map("for_driver")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@map("push_notifications")
+}

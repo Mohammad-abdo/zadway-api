@@ -1,0 +1,51 @@
+model RideRequestBid {
+  id            Int      @id @default(autoincrement())
+  rideRequestId Int      @map("ride_request_id")
+  driverId      Int      @map("driver_id")
+  bidAmount     Float?   @map("bid_amount") @db.Double
+  isBidAccept   Boolean  @default(false) @map("is_bid_accept")
+  notes         String?  @db.Text
+  notesI18n     Json?    @map("notes_i18n")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  driver User @relation(fields: [driverId], references: [id])
+
+  @@index([rideRequestId])
+  @@index([driverId])
+  @@map("ride_request_bids")
+}
+
+model RideRequestRating {
+  id            Int      @id @default(autoincrement())
+  rideRequestId Int      @map("ride_request_id")
+  riderId       Int      @map("rider_id")
+  driverId      Int      @map("driver_id")
+  rating        Float    @db.Double
+  comment       String?  @db.Text
+  commentI18n   Json?    @map("comment_i18n")
+  ratingBy      String?  @map("rating_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+  rider         User     @relation("RiderRatings", fields: [riderId], references: [id])
+  driver        User     @relation("DriverRatings", fields: [driverId], references: [id])
+
+  @@index([rideRequestId])
+  @@index([riderId])
+  @@index([driverId])
+  @@map("ride_request_ratings")
+}
+
+model RideRequestHistory {
+  id            Int       @id @default(autoincrement())
+  rideRequestId Int       @map("ride_request_id")
+  historyType   String?   @map("history_type")
+  historyTypeI18n Json?   @map("history_type_i18n")
+  datetime      DateTime? @db.Timestamp(0)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([rideRequestId])
+  @@map("ride_request_histories")
+}
+

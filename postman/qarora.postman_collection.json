@@ -1,0 +1,385 @@
+{
+  "info": {
+    "_postman_id": "0c6b1d13-0f6d-4d8c-8b3c-6f2f9bd23b2a",
+    "name": "Qarora Backend (Customer + Driver)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Generated collection for Qarora modular REST API. Variables: baseUrl (e.g. http://localhost:6000), tokenCustomer, tokenDriver."
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:6000" },
+    { "key": "tokenCustomer", "value": "" },
+    { "key": "tokenDriver", "value": "" },
+    { "key": "customerEmail", "value": "rider@seed.local" },
+    { "key": "driverEmail", "value": "driver@seed.local" },
+    { "key": "password", "value": "seed-password" },
+    { "key": "productId", "value": "1" },
+    { "key": "variantId", "value": "1" },
+    { "key": "guestId", "value": "1" },
+    { "key": "orderId", "value": "1" },
+    { "key": "offerId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Customer) -> sets tokenCustomer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.token) pm.collectionVariables.set('tokenCustomer', json.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {},
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Logged in successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": 3,\n      \"email\": \"rider@seed.local\",\n      \"userType\": \"rider\"\n    },\n    \"token\": \"<jwt>\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"email or phone required\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid email/phone or password\"\n}"
+            },
+            {
+              "name": "500 Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Database error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login (Driver) -> sets tokenDriver",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.token) pm.collectionVariables.set('tokenDriver', json.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{password}}\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me (Customer)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenCustomer}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": [
+            {
+              "name": "401 Unauthorized (missing/invalid token)",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer",
+      "item": [
+        {
+          "name": "List Products (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenCustomer}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/products?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "products"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Success\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"name\": \"Seed Water\",\n      \"nameI18n\": { \"en\": \"Seed Water\", \"ar\": \"ماء تجريبي\" },\n      \"description\": \"Seed product\"\n    }\n  ],\n  \"pagination\": { \"page\": 1, \"limit\": 10, \"total\": 1, \"pages\": 1 }\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}"
+            },
+            {
+              "name": "500 Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Database error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Guest Customer (201/400/401/500)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenCustomer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/guest-customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "guest-customers"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guest name\",\n  \"nameI18n\": { \"en\": \"Guest name\", \"ar\": \"اسم ضيف\" },\n  \"phone\": \"+9647000000123\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Created successfully\",\n  \"data\": { \"id\": 10, \"name\": \"Guest name\", \"phone\": \"+9647000000123\" }\n}"
+            },
+            {
+              "name": "400 Bad Request (example duplicate/constraint)",
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Database error\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}"
+            },
+            {
+              "name": "500 Server Error",
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Database error\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Product Order (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenCustomer}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-orders"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guestId\": {{guestId}},\n  \"status\": \"NEW\",\n  \"paymentMethod\": \"CASH\",\n  \"dropoffLat\": 33.31,\n  \"dropoffLng\": 44.36,\n  \"dropoffNotes\": \"Seed dropoff\",\n  \"dropoffNotesI18n\": { \"en\": \"Seed dropoff\", \"ar\": \"موقع التوصيل\" },\n  \"subtotal\": 1.5,\n  \"commissionPct\": 0.1,\n  \"commissionAmt\": 0.15,\n  \"total\": 1.65,\n  \"currency\": \"SAR\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read (200/401/404)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenCustomer}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{orderId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{orderId}}", "read"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"message\": \"Updated successfully\",\n  \"data\": { \"id\": 1, \"isRead\": true }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Record not found\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Unauthorized\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Driver",
+      "item": [
+        {
+          "name": "List Driver Inventory Items (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenDriver}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/driver-inventory-items?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "driver-inventory-items"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Accept Order Offer (200)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenDriver}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-orders/{{orderId}}/offers/{{offerId}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-orders", "{{orderId}}", "offers", "{{offerId}}", "accept"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status (200/400)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenDriver}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/product-orders/{{orderId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "product-orders", "{{orderId}}", "status"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACCEPTED\"\n}" }
+          },
+          "response": [
+            {
+              "name": "400 Bad Request (invalid enum)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid enum value\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Accept RideRequest Bid (200)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenDriver}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/ride-request-bids/1/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ride-request-bids", "1", "accept"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Wallet Credit (admin/permission required) (200/403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenDriver}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/wallets/user/2/credit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "wallets", "user", "2", "credit"]
+            },
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 5,\n  \"description\": \"bonus\",\n  \"transactionType\": \"adjustment\"\n}" }
+          },
+          "response": [
+            {
+              "name": "403 Forbidden",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": false,\n  \"message\": \"Forbidden\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

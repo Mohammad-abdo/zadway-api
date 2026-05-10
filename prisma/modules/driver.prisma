@@ -1,0 +1,57 @@
+model Document {
+  id            Int      @id @default(autoincrement())
+  name          String
+  nameAr        String?  @map("name_ar") @db.Text
+  nameI18n      Json?    @map("name_i18n")
+  type          String?
+  status        Int      @default(1)
+  isRequired    Boolean  @default(false) @map("is_required")
+  hasExpiryDate Boolean  @default(false) @map("has_expiry_date")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  driverDocuments DriverDocument[]
+
+  @@map("documents")
+}
+
+model DriverDocument {
+  id            Int       @id @default(autoincrement())
+  driverId      Int       @map("driver_id")
+  documentId    Int       @map("document_id")
+  isVerified    Boolean   @default(false) @map("is_verified")
+  documentImage String?   @map("document_image") @db.Text
+  expireDate    DateTime? @map("expire_date") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  driver   User     @relation(fields: [driverId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@index([driverId])
+  @@index([documentId])
+  @@map("driver_documents")
+}
+
+model UserDetail {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @unique @map("user_id")
+  carModel          String?  @map("car_model")
+  carColor          String?  @map("car_color")
+  carPlateNumber    String?  @map("car_plate_number")
+  carProductionYear Int?     @map("car_production_year")
+  carImage          String?  @map("car_image")
+  workAddress       String?  @map("work_address")
+  homeAddress       String?  @map("home_address")
+  workLatitude      String?  @map("work_latitude")
+  workLongitude     String?  @map("work_longitude")
+  homeLatitude      String?  @map("home_latitude")
+  homeLongitude     String?  @map("home_longitude")
+  createdAt         DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_details")
+}
+

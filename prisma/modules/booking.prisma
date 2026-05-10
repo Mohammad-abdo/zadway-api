@@ -1,0 +1,23 @@
+model BookingInvoice {
+  id        Int       @id @default(autoincrement())
+  bookingId Int       @unique @map("booking_id")
+  subtotal  Float
+  tax       Float     @default(0)
+  discount  Float     @default(0)
+  total     Float
+  issuedAt  DateTime  @map("issued_at") @db.DateTime(6)
+  paidAt    DateTime? @map("paid_at") @db.DateTime(6)
+
+  @@map("booking_invoices")
+}
+
+model BookingLocationUpdate {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @map("booking_id")
+  lat       Float
+  lng       Float
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  @@index([bookingId])
+  @@map("booking_location_updates")
+}

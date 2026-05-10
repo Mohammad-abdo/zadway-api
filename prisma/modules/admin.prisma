@@ -1,0 +1,52 @@
+model AdminLoginDevice {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
+  loginAt   DateTime? @map("login_at") @db.Timestamp(0)
+  logoutAt  DateTime? @map("logout_at") @db.Timestamp(0)
+  isActive  Boolean   @default(true) @map("is_active")
+  sessionId String?   @map("session_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("admin_login_devices")
+}
+
+model AdminLoginHistory {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  ipAddress       String?  @map("ip_address")
+  city            String?
+  region          String?
+  country         String?
+  latLong         String?  @map("lat_long")
+  org             String?
+  postalCode      String?  @map("postal_code")
+  timezone        String?
+  browser         String?
+  browserVersion  String?  @map("browser_version")
+  platform        String?
+  platformVersion String?  @map("platform_version")
+  device          String?
+  isMobile        Boolean  @default(false) @map("is_mobile")
+  isDesktop       Boolean  @default(false) @map("is_desktop")
+  isTablet        Boolean  @default(false) @map("is_tablet")
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([userId])
+  @@map("admin_login_history")
+}
+
+model AdminSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @db.VarChar(128)
+  value     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@map("admin_settings")
+}

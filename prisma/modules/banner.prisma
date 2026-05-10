@@ -1,0 +1,18 @@
+model Banner {
+  id          Int      @id @default(autoincrement())
+  title       String   @db.VarChar(255)
+  description String?  @db.Text
+  image       String?  @db.VarChar(2048)
+  video       String?  @db.VarChar(2048)
+  productId   Int?     @map("product_id")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([isActive])
+  @@map("banners")
+}

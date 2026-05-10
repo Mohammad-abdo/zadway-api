@@ -1,0 +1,35 @@
+{
+  "common.success": "تم بنجاح",
+  "common.error": "حدث خطأ",
+  "common.created": "تم الإنشاء بنجاح",
+  "common.updated": "تم التحديث بنجاح",
+  "common.deleted": "تم الحذف بنجاح",
+
+  "auth.unauthorized": "غير مصرح",
+  "auth.invalid_token": "رمز غير صالح أو منتهي",
+  "auth.user_not_found": "المستخدم غير موجود",
+  "auth.forbidden": "ممنوع",
+  "auth.logged_in": "تم تسجيل الدخول بنجاح",
+  "auth.registered": "تم التسجيل بنجاح",
+  "auth.invalid_credentials": "البريد/الهاتف أو كلمة المرور غير صحيحة",
+
+  "auth.mobile_login_phone_required": "تسجيل الدخول عبر الهاتف يتطلب رقم الهاتف وكلمة المرور. لا يمكن استخدام البريد الإلكتروني لتسجيل الدخول.",
+  "auth.mobile_login_phone_not_email": "استخدم رقم الهاتف لتسجيل الدخول، وليس البريد الإلكتروني.",
+
+  "validation.failed": "فشل التحقق",
+
+  "http.not_found": "المسار غير موجود",
+
+  "db.duplicate": "قيمة مكررة",
+  "db.not_found": "السجل غير موجود",
+  "db.error": "خطأ في قاعدة البيانات",
+
+  "productVariants.duplicate_sku": "رمز SKU مستخدم مسبقاً. استخدم رمزاً مختلفاً أو اترك الحقل فارغاً.",
+  "productVariants.duplicate_product": "هذا المنتج لديه بالفعل متغير. يُسمح بصف متغير واحد فقط لكل منتج.",
+
+  "upload.no_file": "لم يتم رفع ملف",
+  "upload.invalid_type": "نوع الملف غير مسموح",
+  "upload.stored": "تم حفظ الملف بنجاح",
+  "upload.file_too_large": "حجم الملف كبير جداً"
+}
+

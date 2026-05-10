@@ -1,0 +1,14 @@
+model WithdrawRequest {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  amount    Float
+  currency  String   @default("USD")
+  status    Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@map("withdraw_requests")
+}

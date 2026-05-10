@@ -1,0 +1,35 @@
+{
+  "common.success": "Success",
+  "common.error": "Error",
+  "common.created": "Created successfully",
+  "common.updated": "Updated successfully",
+  "common.deleted": "Deleted successfully",
+
+  "auth.unauthorized": "Unauthorized",
+  "auth.invalid_token": "Invalid or expired token",
+  "auth.user_not_found": "User not found",
+  "auth.forbidden": "Forbidden",
+  "auth.logged_in": "Logged in successfully",
+  "auth.registered": "Registered successfully",
+  "auth.invalid_credentials": "Invalid email/phone or password",
+
+  "auth.mobile_login_phone_required": "Mobile login requires your phone number and password. Email cannot be used to sign in.",
+  "auth.mobile_login_phone_not_email": "Use your phone number to sign in, not your email address.",
+
+  "validation.failed": "Validation failed",
+
+  "http.not_found": "Route not found",
+
+  "db.duplicate": "Duplicate entry",
+  "db.not_found": "Record not found",
+  "db.error": "Database error",
+
+  "productVariants.duplicate_sku": "This SKU is already used. Choose a different SKU or leave SKU empty.",
+  "productVariants.duplicate_product": "This product already has a variant. Only one variant row is allowed per product.",
+
+  "upload.no_file": "No file uploaded",
+  "upload.invalid_type": "File type not allowed",
+  "upload.stored": "File stored successfully",
+  "upload.file_too_large": "File too large"
+}
+

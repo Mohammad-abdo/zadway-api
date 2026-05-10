@@ -1,0 +1,110 @@
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  nameI18n    Json?    @map("name_i18n")
+  description String?
+  descriptionI18n Json? @map("description_i18n")
+  image_url   String?
+  products    Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  nameI18n    Json?    @map("name_i18n")
+  description String?
+  descriptionI18n Json? @map("description_i18n")
+  categoryId  Int
+  imageUrl    String
+  images      Json?
+  variants    ProductVariant[]
+  banners     Banner[]
+  isActive    Boolean  @default(true) @map("is_active")
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  @@index([isActive])
+}
+
+model ProductType {
+  id     Int     @id @default(autoincrement())
+  name   String  @default("")
+  nameAr String? @map("name_ar") @db.Text
+  nameI18n Json? @map("name_i18n")
+
+  variants  ProductVariant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model Size {
+  id     Int     @id @default(autoincrement())
+  name   String  @default("")
+  nameAr String? @map("name_ar") @db.Text
+  nameI18n Json? @map("name_i18n")
+
+  variants  ProductVariant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  sizeId    Int
+  typeId    Int
+  price     Decimal @db.Decimal(10, 2)
+  stock     Int     @default(0)
+  sku       String? @unique
+
+  product Product     @relation(fields: [productId], references: [id])
+  size    Size        @relation(fields: [sizeId], references: [id])
+  type    ProductType @relation(fields: [typeId], references: [id])
+
+  orderItems           ProductOrderItem[]
+  driverInventoryItems DriverInventoryItem[]
+  inventoryLogs        InventoryLog[]
+
+  currency  String   @default("IQD") @db.VarChar(8) //دينار  عراقي
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@unique([productId])
+}
+
+model Coupon {
+  id                 Int       @id @default(autoincrement())
+  code               String?   @unique
+  title              String?
+  titleAr            String?   @map("title_ar") @db.Text
+  titleI18n           Json?     @map("title_i18n")
+  couponType         String?   @map("coupon_type")
+  usageLimitPerRider Int?      @map("usage_limit_per_rider")
+  discountType       String?   @map("discount_type")
+  discount           Float?    @db.Double
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  minimumAmount      Float?    @map("minimum_amount") @db.Double
+  maximumDiscount    Float?    @map("maximum_discount") @db.Double
+  status             Int?
+  description        String?   @db.Text
+  descriptionAr      String?   @map("description_ar") @db.Text
+  descriptionI18n     Json?     @map("description_i18n")
+  imageUrl           String?   @map("image_url") @db.VarChar(512)
+  regionIds          String?   @map("region_ids") @db.Text
+  serviceIds         Json?     @map("service_ids")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@map("coupons")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+

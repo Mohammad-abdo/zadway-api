@@ -1,0 +1,49 @@
+model CustomerSupport {
+  id               Int                  @id @default(autoincrement())
+  message          String?              @db.Text
+  messageI18n      Json?                @map("message_i18n")
+  supportType      String?              @map("support_type")
+  userId           Int                  @map("user_id")
+  status           String?              @default("pending") @db.VarChar(20)
+  resolutionDetail String?              @map("resolution_detail") @db.Text
+  resolutionDetailI18n Json?            @map("resolution_detail_i18n")
+  createdAt        DateTime             @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+  user             User                 @relation(fields: [userId], references: [id])
+  chatHistories    SupportChathistory[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("customer_supports")
+}
+
+model SupportChathistory {
+  id         Int             @id @default(autoincrement())
+  supportId  Int             @map("support_id")
+  message    String?         @db.Text
+  messageI18n Json?          @map("message_i18n")
+  senderType String?         @map("sender_type")
+  createdAt  DateTime        @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt  DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+  support    CustomerSupport @relation(fields: [supportId], references: [id])
+
+  @@index([supportId])
+  @@map("support_chathistories")
+}
+
+model Pages {
+  id            Int      @id @default(autoincrement())
+  title         String?
+  titleAr       String?  @map("title_ar") @db.Text
+  titleI18n     Json?    @map("title_i18n")
+  description   String?  @db.Text
+  descriptionAr String?  @map("description_ar") @db.Text
+  descriptionI18n Json?  @map("description_i18n")
+  slug          String?  @unique
+  status        Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([slug])
+  @@map("pages")
+}

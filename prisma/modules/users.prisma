@@ -1,0 +1,238 @@
+model User {
+  id                       Int       @id @default(autoincrement())
+  name                     String?   @map("first_name")
+  email                    String?   @unique
+  password                 String?
+  countryCode              String?   @default("+1") @map("country_code")
+  phone                    Int?      @unique @map("phone")
+  userType                 String?   @map("user_type") @db.VarChar(20)
+  uid                      String?
+  loginType                String?   @map("login_type")
+  displayName              String?   @map("display_name")
+  status                   String    @default("pending") @db.VarChar(20)
+  isOnline                 Boolean   @default(false) @map("is_online")
+  isAvailable              Boolean   @default(false) @map("is_available")
+  isVerified               Boolean   @default(false) @map("is_verified")
+  latitude                 String?
+  longitude                String?
+  currentHeading           Float?    @map("current_heading")
+  lastLocationUpdateAt     DateTime? @map("last_location_update_at") @db.Timestamp
+  lastActivedAt            DateTime? @map("last_actived_at") @db.Timestamp
+  referralCode             String?   @unique @map("referral_code")
+  otp                      String?   @db.VarChar(10)
+  otpExpiresAt             DateTime? @map("otp_expires_at") @db.Timestamp
+  appVersion               String?   @map("app_version")
+  avatar                   String?   @db.Text
+  driverRejectionCount     Int       @default(0) @map("driver_rejection_count")
+  rejectionReason          String?   @map("rejection_reason") @db.Text
+  lastRejectionAt          DateTime? @map("last_rejection_at") @db.Timestamp
+  pushNotificationsEnabled Boolean   @default(true) @map("push_notifications_enabled")
+  createdAt                DateTime  @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt                DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  wallet          Wallet?
+  walletHistories WalletHistory[]
+  userRoles       UserRole[]
+
+  ProductOrdersAsDriver  ProductOrder[]               @relation("ProductOrderDriver")
+  ProductInventoryItems  DriverInventoryItem[]
+  ProductLocationUpdates ProductOrderLocationUpdate[]
+  ProductOrderOffers     ProductOrderOffer[]
+  inventoryLogs          InventoryLog[]
+  paymentsAsUser         Payment[]                    @relation("PaymentUser")
+  paymentsAsDriver       Payment[]                    @relation("PaymentDriver")
+
+  driverDocuments         DriverDocument[]
+  driverComplaints        Complaint[]         @relation("DriverComplaints")
+  riderComplaints         Complaint[]         @relation("RiderComplaints")
+  rideRequestBidsAsDriver RideRequestBid[]
+  riderRatings            RideRequestRating[] @relation("RiderRatings")
+  driverRatings           RideRequestRating[] @relation("DriverRatings")
+  withdrawRequests        WithdrawRequest[]
+  detail                  UserDetail?
+  customerSupports        CustomerSupport[]
+  adminLoginDevices       AdminLoginDevice[]
+  addresses               UserAddress[]
+  bankCards               UserBankCard[]
+
+  @@index([userType, status])
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model Permission {
+  id        Int      @id @default(autoincrement())
+  name      String
+  guardName String   @default("web") @map("guard_name")
+  parentId  Int?     @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  parent          Permission?      @relation("PermissionParent", fields: [parentId], references: [id])
+  subpermissions  Permission[]     @relation("PermissionParent")
+  rolePermissions RolePermission[]
+
+  @@unique([name, guardName])
+  @@index([guardName])
+  @@index([parentId])
+  @@map("permissions")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String
+  guardName String   @default("web") @map("guard_name")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([name, guardName])
+  @@index([guardName])
+  @@map("roles")
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  roleId       Int      @map("role_id")
+  permissionId Int      @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  roleId    Int      @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Wallet {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  balance   Float    @default(0) @db.Double
+  currency  String   @default("SAR")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  user      User            @relation(fields: [userId], references: [id])
+  histories WalletHistory[]
+
+  @@map("wallets")
+}
+
+model WalletHistory {
+  id              Int      @id @default(autoincrement())
+  walletId        Int      @map("wallet_id")
+  userId          Int      @map("user_id")
+  ProductOrderId  Int?     @map("Product_order_id")
+  type            String
+  amount          Float    @db.Double
+  balance         Float    @db.Double
+  description     String?  @db.Text
+  transactionType String   @map("transaction_type")
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  wallet       Wallet        @relation(fields: [walletId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  ProductOrder ProductOrder? @relation(fields: [ProductOrderId], references: [id])
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([ProductOrderId])
+  @@map("wallet_histories")
+}
+
+model Review {
+  id            Int      @id @default(autoincrement())
+  driverId      Int      @map("driver_id")
+  riderId       Int      @map("rider_id")
+  rideRequestId Int      @map("ride_request_id")
+  driverRating  Float?   @map("driver_rating") @db.Double
+  riderRating   Float?   @map("rider_rating") @db.Double
+  driverReview  String?  @map("driver_review") @db.Text
+  driverReviewI18n Json? @map("driver_review_i18n")
+  riderReview   String?  @map("rider_review") @db.Text
+  riderReviewI18n Json?  @map("rider_review_i18n")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  @@index([driverId])
+  @@index([riderId])
+  @@index([rideRequestId])
+  @@map("reviews")
+}
+
+model UserAddress {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String?
+  titleI18n Json?    @map("title_i18n")
+  address   String?  @db.Text
+  addressI18n Json?  @map("address_i18n")
+  latitude  String?
+  longitude String?
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_addresses")
+}
+
+model UserBankCard {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  cardHolderName String?  @map("card_holder_name") @db.VarChar(100)
+  lastFourDigits String   @map("last_four_digits") @db.VarChar(4)
+  brand          String?  @db.VarChar(20)
+  expiryMonth    Int?     @map("expiry_month")
+  expiryYear     Int?     @map("expiry_year")
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_bank_cards")
+}
+
+model Complaint {
+  id        Int      @id @default(autoincrement())
+  driverId  Int      @map("driver_id")
+  riderId   Int      @map("rider_id")
+  message   String?  @db.Text
+  messageI18n Json?  @map("message_i18n")
+  status    String?  @default("pending") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
+
+  driver User @relation("DriverComplaints", fields: [driverId], references: [id])
+  rider  User @relation("RiderComplaints", fields: [riderId], references: [id])
+
+  @@index([driverId])
+  @@index([riderId])
+  @@map("complaints")
+}
+
