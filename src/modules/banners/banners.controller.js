@@ -11,6 +11,7 @@ export async function list(req, res) {
     return errorResponse(res, e.message, 500);
   }
 }
+
 export async function getBanner(req, res) {
   try {
     const { items, total, page, limit } = await service.list(req.query);

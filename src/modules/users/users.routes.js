@@ -10,8 +10,9 @@ const PERM = "users.manage";
 
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
 r.get("/:id", authenticate, requireResourceAccess(PERM), validate(v.idParamSchema), ctrl.getById);
-r.post("/register", validate(v.registerSchema), ctrl.register); 
-r.post("/", authenticate, requirePermission([PERM]), validate(v.createSchema), ctrl.create); 
+r.post("/register", validate(v.registerSchema), ctrl.register);
+
+r.post("/", authenticate, requirePermission([PERM]), validate(v.createSchema), ctrl.create);
 
 r.patch("/:id", authenticate, requirePermission([PERM]), validate(v.updateSchema), ctrl.update);
 r.delete("/:id", authenticate, requirePermission([PERM]), validate(v.idParamSchema), ctrl.remove);
