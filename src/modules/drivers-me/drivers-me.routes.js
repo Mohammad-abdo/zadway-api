@@ -13,6 +13,10 @@ r.get("/me/inventory", ctrl.listInventory);
 r.post("/me/inventory", validate(v.inventoryCreateSchema), ctrl.createInventory);
 r.patch("/me/inventory/:id", validate(v.inventoryUpdateSchema), ctrl.updateInventory);
 r.delete("/me/inventory/:id", validate(v.inventoryIdParamSchema), ctrl.removeInventory);
+r.patch("/me/location", validate(v.driverLocationSchema), ctrl.patchLocation);
+r.get("/me/product-orders", validate(v.driverOrdersListSchema), ctrl.listProductOrders);
+r.get("/me/product-orders/:orderId", validate(v.driverOrderIdParamSchema), ctrl.getProductOrder);
+r.post("/me/product-orders/:orderId/offers", validate(v.driverOfferSchema), ctrl.upsertOffer);
 r.post("/me/product-orders/:orderId/claim", validate(v.claimOrderSchema), ctrl.claimProductOrder);
 
 export default r;

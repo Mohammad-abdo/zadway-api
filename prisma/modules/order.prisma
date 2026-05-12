@@ -32,6 +32,8 @@ model ProductOrder {
   id            Int                 @id @default(autoincrement())
   guestId       Int                 @map("guest_id")
   driverId      Int?                @map("driver_id")
+  riderUserId   Int?                @map("rider_user_id")
+  accessToken   String?             @unique @map("access_token") @db.VarChar(64)
   status        ProductOrderStatus  @default(NEW)
   paymentMethod ProductPaymentMethod @default(CASH) @map("payment_method")
 
@@ -53,6 +55,7 @@ model ProductOrder {
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(6)
 
   guest           GuestCustomer              @relation(fields: [guestId], references: [id])
+  rider           User?                      @relation("ProductOrderRider", fields: [riderUserId], references: [id])
   driver          User?                      @relation("ProductOrderDriver", fields: [driverId], references: [id])
   items           ProductOrderItem[]
   offers          ProductOrderOffer[]
@@ -62,6 +65,7 @@ model ProductOrder {
 
   @@index([guestId, status])
   @@index([driverId, status])
+  @@index([riderUserId, status])
   @@index([status])
   @@map("Product_orders")
 }

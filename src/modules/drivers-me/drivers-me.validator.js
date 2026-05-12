@@ -29,3 +29,33 @@ export const inventoryUpdateSchema = z.object({
 export const claimOrderSchema = z.object({
   params: z.object({ orderId: z.coerce.number().int().positive() }),
 });
+
+export const driverLocationSchema = z.object({
+  body: z.object({
+    latitude: z.union([z.string(), z.number()]),
+    longitude: z.union([z.string(), z.number()]),
+    currentHeading: z.coerce.number().optional(),
+  }),
+});
+
+export const driverOrdersListSchema = z.object({
+  query: z
+    .object({
+      filter: z.enum(["mine", "open"]).optional(),
+      page: z.coerce.number().optional(),
+      limit: z.coerce.number().optional(),
+      sort: z.string().optional(),
+    })
+    .passthrough(),
+});
+
+export const driverOrderIdParamSchema = z.object({
+  params: z.object({ orderId: z.coerce.number().int().positive() }),
+});
+
+export const driverOfferSchema = z.object({
+  params: z.object({ orderId: z.coerce.number().int().positive() }),
+  body: z.object({
+    offeredPrice: z.coerce.number().nonnegative().optional().nullable(),
+  }),
+});

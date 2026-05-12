@@ -64,6 +64,7 @@ import adminBrandingRoutes from "../modules/admin-branding/admin-branding.routes
 import adminDashboardRoutes from "../modules/admin-dashboard/admin-dashboard.routes.js";
 import adminMetaRoutes from "../modules/admin-meta/admin-meta.routes.js";
 import adminReportsRoutes from "../modules/admin-reports/admin-reports.routes.js";
+import clientRoutes from "../modules/client/client.routes.js";
 import { validate } from "../core/middlewares/validate.middleware.js";
 import * as authCtrl from "../modules/auth/auth.controller.js";
 import * as authV from "../modules/auth/auth.validator.js";
@@ -73,6 +74,7 @@ const router = Router();
 router.post("/register", validate(authV.publicRegisterSchema), authCtrl.publicRegister);
 router.use("/auth", authRoutes);
 router.get("/public/branding", adminBrandingCtrl.getPublic);
+router.use("/client", clientRoutes);
 router.use("/admin/branding", adminBrandingRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);
 router.use("/admin/meta", adminMetaRoutes);

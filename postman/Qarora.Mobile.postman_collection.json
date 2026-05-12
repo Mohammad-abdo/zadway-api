@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-1111-4111-8111-000000000001",
+    "name": "Qarora Mobile (Driver + Client)",
+    "description": "Import with `Qarora.Local.postman_environment.json`. Login as driver/rider, paste JWT into environment variables.\n\n**Guest order:** POST `/client/orders` without Authorization → copy `data.accessToken`. GET `/client/orders/:id` with header `X-Order-Access-Token`.\n\n**WebSocket:** Connect to `{{wsUrl}}?token={{driverToken}}` (Postman 10+ WebSocket tab). Server sends JSON `{ event, payload, ts }`. New product orders: `event: new_product_order`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01_Auth",
+      "item": [
+        {
+          "name": "POST Login (driver or rider)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": 966500000001,\n  \"password\": \"your-password\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Response: `data.accessToken` (JWT). Paste into `driverToken` or `riderToken` for Authorization: Bearer …"
+          }
+        },
+        {
+          "name": "POST Register rider",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": 966500000002,\n  \"password\": \"secret12\",\n  \"userType\": \"rider\",\n  \"name\": \"Test Rider\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "GET Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{riderToken}}" }],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02_Public_Catalog",
+      "item": [
+        {
+          "name": "GET Public branding",
+          "request": { "method": "GET", "url": "{{baseUrl}}/public/branding" }
+        },
+        {
+          "name": "GET Categories all",
+          "request": { "method": "GET", "url": "{{baseUrl}}/categories/all" }
+        },
+        {
+          "name": "GET Products all",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/all?limit=50" }
+        },
+        {
+          "name": "GET Product mobile by id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/mobile/{{productId}}" }
+        },
+        {
+          "name": "GET Products by category",
+          "request": { "method": "GET", "url": "{{baseUrl}}/products/category/1" }
+        }
+      ]
+    },
+    {
+      "name": "03_Client_API",
+      "item": [
+        {
+          "name": "GET Client catalog",
+          "request": { "method": "GET", "url": "{{baseUrl}}/client/catalog" }
+        },
+        {
+          "name": "GET Client product variants",
+          "request": { "method": "GET", "url": "{{baseUrl}}/client/products/{{productId}}/variants" }
+        },
+        {
+          "name": "POST Client guests",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Guest User\",\n  \"phone\": \"966511111111\"\n}"
+            },
+            "url": "{{baseUrl}}/client/guests",
+            "description": "Optional: save returned `data.id` as `guestId`."
+          }
+        },
+        {
+          "name": "POST Client order (guest, no JWT)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guest\": { \"name\": \"Guest User\", \"phone\": \"966511111111\" },\n  \"dropoffLat\": 24.7136,\n  \"dropoffLng\": 46.6753,\n  \"commissionPct\": 5,\n  \"currency\": \"SAR\",\n  \"items\": [\n    { \"variantId\": 1, \"quantity\": 1, \"unitPrice\": 10 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/client/orders",
+            "description": "Save `data.order.id` → `orderId`, `data.accessToken` → `orderAccessToken`."
+          }
+        },
+        {
+          "name": "POST Client order (rider JWT)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{riderToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guest\": { \"name\": \"Rider Guest\", \"phone\": \"966522222222\" },\n  \"dropoffLat\": 24.7136,\n  \"dropoffLng\": 46.6753,\n  \"commissionPct\": 5,\n  \"currency\": \"SAR\",\n  \"items\": [\n    { \"variantId\": 1, \"quantity\": 1, \"unitPrice\": 10 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/client/orders"
+          }
+        },
+        {
+          "name": "GET Client orders (rider list)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{riderToken}}" }],
+            "url": "{{baseUrl}}/client/orders?page=1&limit=20"
+          }
+        },
+        {
+          "name": "GET Client order by id (rider)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{riderToken}}" }],
+            "url": "{{baseUrl}}/client/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "GET Client order by id (guest token)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Order-Access-Token", "value": "{{orderAccessToken}}" }],
+            "url": "{{baseUrl}}/client/orders/{{orderId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04_Driver_API",
+      "item": [
+        {
+          "name": "PATCH Driver location",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": \"24.72\",\n  \"longitude\": \"46.68\",\n  \"currentHeading\": 90\n}"
+            },
+            "url": "{{baseUrl}}/drivers/me/location"
+          }
+        },
+        {
+          "name": "GET Driver inventory",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/inventory"
+          }
+        },
+        {
+          "name": "POST Driver inventory",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": 1,\n  \"quantityOnHand\": 20,\n  \"price\": 12.5,\n  \"currency\": \"SAR\"\n}"
+            },
+            "url": "{{baseUrl}}/drivers/me/inventory"
+          }
+        },
+        {
+          "name": "GET Driver product orders (open pool)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/product-orders?filter=open&limit=30"
+          }
+        },
+        {
+          "name": "GET Driver product orders (mine)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/product-orders?filter=mine"
+          }
+        },
+        {
+          "name": "GET Driver product order detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "POST Driver offer on order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"offeredPrice\": 55\n}" },
+            "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}/offers"
+          }
+        },
+        {
+          "name": "POST Driver claim order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}/claim"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05_Admin_Smoke_optional",
+      "item": [
+        {
+          "name": "GET Admin product orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/product-orders?limit=10"
+          }
+        }
+      ]
+    }
+  ]
+}

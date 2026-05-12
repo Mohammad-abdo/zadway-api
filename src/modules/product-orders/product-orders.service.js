@@ -1,6 +1,7 @@
 import prisma from "../../config/prisma.js";
 import { createCrudService } from "../../core/crud/genericCrudService.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
+import { randomBytes } from "node:crypto";
 import {
   assertEligibleDriversExist,
   findEligibleDriversSorted,
@@ -53,6 +54,9 @@ export async function list(q) {
   if (q?.driverId != null && String(q.driverId).trim() !== "") {
     where.driverId = Number(q.driverId);
   }
+  if (q?.riderUserId != null && String(q.riderUserId).trim() !== "") {
+    where.riderUserId = Number(q.riderUserId);
+  }
   if (q?.status != null && String(q.status).trim() !== "") {
     where.status = String(q.status);
   }
@@ -96,6 +100,7 @@ export async function create(data) {
   const {
     guestId,
     driverId,
+    riderUserId,
     status,
     paymentMethod,
     dropoffLat,
@@ -154,10 +159,14 @@ export async function create(data) {
     );
   }
 
+  const accessToken = randomBytes(24).toString("hex");
+
   const row = await prisma.productOrder.create({
     data: {
       guestId: Number(guestId),
       driverId: driverId != null ? Number(driverId) : undefined,
+      riderUserId: riderUserId != null ? Number(riderUserId) : undefined,
+      accessToken,
       status: initialStatus,
       paymentMethod: paymentMethod || "CASH",
       dropoffLat: dropLat,

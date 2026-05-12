@@ -1,4 +1,7 @@
 import prisma from "../../config/prisma.js";
+import { parseListQuery } from "../../core/utils/pagination.js";
+import { isDriverEligibleForOrder } from "../../services/productOrders/productOrderMatching.js";
+import * as clientService from "../client/client.service.js";
 
 const includeDetail = {
   driver: { select: { id: true, name: true, email: true, phone: true } },
@@ -102,4 +105,176 @@ export async function removeMyInventory(driverId, id) {
     throw e;
   }
   await prisma.driverInventoryItem.delete({ where: { id: Number(id) } });
+}
+
+const orderListInclude = {
+  guest: true,
+  driver: { select: { id: true, name: true, phone: true } },
+  _count: { select: { items: true } },
+};
+
+/**
+ * @param {number} driverId
+ * @param {{ latitude?: unknown; longitude?: unknown; currentHeading?: unknown }} body
+ */
+export async function updateMyLocation(driverId, body) {
+  const data = {};
+  if (body.latitude !== undefined && body.latitude !== null && String(body.latitude).trim() !== "") {
+    data.latitude = String(body.latitude).trim();
+  }
+  if (body.longitude !== undefined && body.longitude !== null && String(body.longitude).trim() !== "") {
+    data.longitude = String(body.longitude).trim();
+  }
+  if (body.currentHeading != null && !Number.isNaN(Number(body.currentHeading))) {
+    data.currentHeading = Number(body.currentHeading);
+  }
+  data.lastLocationUpdateAt = new Date();
+  return prisma.user.update({
+    where: { id: Number(driverId) },
+    data,
+    select: { id: true, latitude: true, longitude: true, currentHeading: true, lastLocationUpdateAt: true },
+  });
+}
+
+/**
+ * @param {number} driverId
+ * @param {object} query filter=mine|open
+ */
+export async function listMyProductOrders(driverId, query) {
+  const filter = String(query.filter || "open").toLowerCase();
+  const parsed = parseListQuery(query, { searchableFields: [], maxLimit: 100, defaultLimit: 30 });
+
+  if (filter === "mine") {
+    const where = { ...parsed.where, driverId: Number(driverId) };
+    const [items, total] = await Promise.all([
+      prisma.productOrder.findMany({
+        where,
+        skip: parsed.skip,
+        take: parsed.take,
+        orderBy: parsed.orderBy,
+        include: orderListInclude,
+      }),
+      prisma.productOrder.count({ where }),
+    ]);
+    return {
+      items: items.map((o) => clientService.stripAccessToken(o)),
+      total,
+      page: parsed.page,
+      limit: parsed.limit,
+    };
+  }
+
+  const where = {
+    ...parsed.where,
+    status: { in: ["NEW", "PENDING"] },
+  };
+  const [items, total] = await Promise.all([
+    prisma.productOrder.findMany({
+      where,
+      skip: parsed.skip,
+      take: parsed.take,
+      orderBy: parsed.orderBy,
+      include: {
+        ...orderListInclude,
+        items: { select: { variantId: true, quantity: true } },
+      },
+    }),
+    prisma.productOrder.count({ where }),
+  ]);
+  return {
+    items: items.map((o) => clientService.stripAccessToken(o)),
+    total,
+    page: parsed.page,
+    limit: parsed.limit,
+  };
+}
+
+/**
+ * @param {number} driverId
+ * @param {number|string} orderId
+ */
+export async function getMyProductOrder(driverId, orderId) {
+  const order = await prisma.productOrder.findUnique({
+    where: { id: Number(orderId) },
+    include: {
+      guest: true,
+      driver: { select: { id: true, name: true, phone: true, email: true } },
+      items: { include: { variant: { include: { product: true, size: true, type: true } } } },
+    },
+  });
+  if (!order) {
+    const e = new Error("not found");
+    e.statusCode = 404;
+    throw e;
+  }
+  if (order.driverId === Number(driverId)) {
+    return clientService.stripAccessToken(order);
+  }
+  if (order.status === "NEW" || order.status === "PENDING") {
+    const lineItems = order.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
+    const ok = await isDriverEligibleForOrder(
+      prisma,
+      lineItems,
+      order.dropoffLat,
+      order.dropoffLng,
+      driverId,
+    );
+    if (ok) return clientService.stripAccessToken(order);
+  }
+  const e = new Error("forbidden");
+  e.statusCode = 403;
+  throw e;
+}
+
+/**
+ * @param {number} driverId
+ * @param {number|string} orderId
+ * @param {number|null|undefined} offeredPrice
+ */
+export async function upsertMyOffer(driverId, orderId, offeredPrice) {
+  const order = await prisma.productOrder.findUnique({
+    where: { id: Number(orderId) },
+    include: { items: true },
+  });
+  if (!order) {
+    const e = new Error("order not found");
+    e.statusCode = 404;
+    throw e;
+  }
+  if (order.status !== "NEW" && order.status !== "PENDING") {
+    const e = new Error("Offers are only allowed for open orders.");
+    e.statusCode = 400;
+    throw e;
+  }
+  const lineItems = order.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
+  const ok = await isDriverEligibleForOrder(
+    prisma,
+    lineItems,
+    order.dropoffLat,
+    order.dropoffLng,
+    driverId,
+  );
+  if (!ok) {
+    const e = new Error("You are not eligible to offer on this order.");
+    e.statusCode = 403;
+    throw e;
+  }
+  return prisma.productOrderOffer.upsert({
+    where: {
+      orderId_driverId: {
+        orderId: Number(orderId),
+        driverId: Number(driverId),
+      },
+    },
+    create: {
+      orderId: Number(orderId),
+      driverId: Number(driverId),
+      offeredPrice: offeredPrice != null ? Number(offeredPrice) : null,
+      status: "PENDING",
+    },
+    update: {
+      offeredPrice: offeredPrice != null ? Number(offeredPrice) : null,
+      status: "PENDING",
+    },
+  });
 }
