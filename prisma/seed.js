@@ -460,17 +460,26 @@ async function main() {
     },
   });
 
-  // Note: schema enforces @@unique([productId]) so we seed exactly one variant per product.
+  // Match by stable seed SKU so re-runs and DBs migrated from @@unique([productId]) stay idempotent
+  // (old rows may share productId but differ in size/type until updated).
+  const waterSku = `SEED-WATER-${product.id}`;
   const variant = await prisma.productVariant.upsert({
-    where: { productId: product.id },
-    update: { stock: 10 },
+    where: { sku: waterSku },
+    update: {
+      productId: product.id,
+      sizeId: size.id,
+      typeId: productType.id,
+      price: 1.5,
+      stock: 10,
+      currency: "SAR",
+    },
     create: {
       productId: product.id,
       sizeId: size.id,
       typeId: productType.id,
       price: 1.5,
       stock: 10,
-      sku: `SEED-WATER-${product.id}`,
+      sku: waterSku,
       currency: "SAR",
     },
   });
@@ -502,16 +511,24 @@ async function main() {
     }
   );
 
+  const chipsSku = `SEED-CHIPS-${product2.id}`;
   await prisma.productVariant.upsert({
-    where: { productId: product2.id },
-    update: { stock: 25 },
+    where: { sku: chipsSku },
+    update: {
+      productId: product2.id,
+      sizeId: size2.id,
+      typeId: productType2.id,
+      price: 3.25,
+      stock: 25,
+      currency: "SAR",
+    },
     create: {
       productId: product2.id,
       sizeId: size2.id,
       typeId: productType2.id,
       price: 3.25,
       stock: 25,
-      sku: `SEED-CHIPS-${product2.id}`,
+      sku: chipsSku,
       currency: "SAR",
     },
   });
