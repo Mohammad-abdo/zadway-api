@@ -49,3 +49,5 @@ export function emitDriverLocationUpdate(io, driverId, data) {
   });
 }
 
+export { emitProductOrderToDrivers } from "../../realtime/wsHub.js";
+

@@ -1,6 +1,12 @@
 import prisma from "../../config/prisma.js";
 import { createCrudService } from "../../core/crud/genericCrudService.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
+import {
+  assertEligibleDriversExist,
+  findEligibleDriversSorted,
+  isDriverEligibleForOrder,
+} from "../../services/productOrders/productOrderMatching.js";
+import { emitProductOrderToDrivers } from "../../realtime/wsHub.js";
 
 const svc = createCrudService("productOrder", { searchableFields: [] });
 
@@ -137,14 +143,25 @@ export async function create(data) {
     throw e;
   }
 
-  return prisma.productOrder.create({
+  const dropLat = Number(dropoffLat);
+  const dropLng = Number(dropoffLng);
+  if (normalizedItems.length) {
+    await assertEligibleDriversExist(
+      prisma,
+      normalizedItems.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
+      dropLat,
+      dropLng,
+    );
+  }
+
+  const row = await prisma.productOrder.create({
     data: {
       guestId: Number(guestId),
       driverId: driverId != null ? Number(driverId) : undefined,
       status: initialStatus,
       paymentMethod: paymentMethod || "CASH",
-      dropoffLat: Number(dropoffLat),
-      dropoffLng: Number(dropoffLng),
+      dropoffLat: dropLat,
+      dropoffLng: dropLng,
       dropoffNotes: dropoffNotes || null,
       dropoffNotesI18n: dropoffNotesI18n || undefined,
       subtotal,
@@ -158,6 +175,30 @@ export async function create(data) {
     },
     include: { items: true },
   });
+
+  if (normalizedItems.length) {
+    const sorted = await findEligibleDriversSorted(
+      prisma,
+      normalizedItems.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
+      dropLat,
+      dropLng,
+    );
+    const driverIds = sorted.map((s) => s.driverId);
+    emitProductOrderToDrivers(driverIds, {
+      orderId: row.id,
+      guestId: row.guestId,
+      status: row.status,
+      dropoffLat: row.dropoffLat,
+      dropoffLng: row.dropoffLng,
+      subtotal: row.subtotal,
+      total: row.total,
+      currency: row.currency,
+      itemCount: normalizedItems.length,
+      candidates: sorted,
+    });
+  }
+
+  return row;
 }
 
 export async function update(id, data) {
@@ -210,24 +251,151 @@ export async function assignDriver(orderId, driverId) {
 }
 
 export async function acceptOffer(orderId, offerId) {
-  const offer = await prisma.productOrderOffer.findFirst({
-    where: { id: Number(offerId), orderId: Number(orderId) },
+  return prisma.$transaction(async (tx) => {
+    const offer = await tx.productOrderOffer.findFirst({
+      where: { id: Number(offerId), orderId: Number(orderId) },
+    });
+    if (!offer) {
+      const e = new Error("offer not found");
+      e.statusCode = 404;
+      throw e;
+    }
+
+    const order = await tx.productOrder.findUnique({
+      where: { id: Number(orderId) },
+      include: { items: true },
+    });
+    if (!order) {
+      const e = new Error("order not found");
+      e.statusCode = 404;
+      throw e;
+    }
+    if (order.status === "DELIVERED") {
+      const e = new Error("Cannot accept offer: order is already delivered.");
+      e.statusCode = 400;
+      throw e;
+    }
+    if (order.status === "ACCEPTED" && order.driverId != null && order.driverId !== offer.driverId) {
+      const e = new Error("Order is already assigned to another driver.");
+      e.statusCode = 409;
+      throw e;
+    }
+
+    await tx.productOrderOffer.updateMany({
+      where: {
+        orderId: Number(orderId),
+        status: "PENDING",
+        id: { not: offer.id },
+      },
+      data: { status: "REJECTED" },
+    });
+
+    await tx.productOrderOffer.update({
+      where: { id: offer.id },
+      data: { status: "ACCEPTED" },
+    });
+
+    return tx.productOrder.update({
+      where: { id: Number(orderId) },
+      data: {
+        driverId: offer.driverId,
+        status: "ACCEPTED",
+        assignedAt: new Date(),
+      },
+      include: { items: true, guest: true, driver: { select: { id: true, name: true, phone: true } } },
+    });
   });
-  if (!offer) {
-    const e = new Error("offer not found");
-    e.statusCode = 404;
-    throw e;
-  }
-  await prisma.productOrderOffer.update({
-    where: { id: offer.id },
-    data: { status: "ACCEPTED" },
-  });
-  return prisma.productOrder.update({
-    where: { id: Number(orderId) },
-    data: {
-      driverId: offer.driverId,
-      status: "ACCEPTED",
-      assignedAt: new Date(),
-    },
+}
+
+/**
+ * Driver self-assigns an open product order (first successful claim wins).
+ * @param {number|string} orderId
+ * @param {number|string} driverId
+ */
+export async function claimProductOrder(orderId, driverId) {
+  const oid = Number(orderId);
+  const did = Number(driverId);
+
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.productOrder.findUnique({
+      where: { id: oid },
+      include: { items: true },
+    });
+    if (!order) {
+      const e = new Error("order not found");
+      e.statusCode = 404;
+      throw e;
+    }
+
+    if (order.status === "ACCEPTED" && order.driverId === did) {
+      return order;
+    }
+
+    if (order.status !== "NEW" && order.status !== "PENDING") {
+      const e = new Error("Order is no longer available to claim.");
+      e.statusCode = 409;
+      throw e;
+    }
+
+    const lineItems = order.items.map((i) => ({
+      variantId: i.variantId,
+      quantity: i.quantity,
+    }));
+
+    const eligible = await isDriverEligibleForOrder(tx, lineItems, order.dropoffLat, order.dropoffLng, did);
+    if (!eligible) {
+      const e = new Error("You are not eligible for this order (inventory or distance).");
+      e.statusCode = 403;
+      throw e;
+    }
+
+    const updated = await tx.productOrder.updateMany({
+      where: {
+        id: oid,
+        status: { in: ["NEW", "PENDING"] },
+      },
+      data: {
+        status: "ACCEPTED",
+        driverId: did,
+        assignedAt: new Date(),
+      },
+    });
+
+    if (updated.count === 0) {
+      const e = new Error("Order was just claimed by another driver.");
+      e.statusCode = 409;
+      throw e;
+    }
+
+    await tx.productOrderOffer.updateMany({
+      where: { orderId: oid, status: "PENDING" },
+      data: { status: "REJECTED" },
+    });
+
+    await tx.productOrderOffer.upsert({
+      where: {
+        orderId_driverId: {
+          orderId: oid,
+          driverId: did,
+        },
+      },
+      create: {
+        orderId: oid,
+        driverId: did,
+        status: "ACCEPTED",
+      },
+      update: {
+        status: "ACCEPTED",
+      },
+    });
+
+    return tx.productOrder.findUnique({
+      where: { id: oid },
+      include: {
+        items: true,
+        guest: true,
+        driver: { select: { id: true, name: true, phone: true } },
+      },
+    });
   });
 }

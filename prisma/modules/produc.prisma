@@ -73,7 +73,7 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
-  @@unique([productId])
+  @@unique([productId, sizeId, typeId])
 }
 
 model Coupon {

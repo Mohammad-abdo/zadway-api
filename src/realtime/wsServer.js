@@ -1,6 +1,6 @@
 import { WebSocketServer } from "ws";
 import { verifyToken } from "../core/utils/jwtHelper.js";
-import { setWsServer } from "./wsHub.js";
+import { registerUserSocket, setWsServer } from "./wsHub.js";
 
 function parseToken(req) {
   try {
@@ -29,6 +29,8 @@ export function initWsServer(httpServer) {
       socket.close(1008, "Invalid token");
       return;
     }
+
+    registerUserSocket(socket, socket.userId);
 
     socket.send(
       JSON.stringify({

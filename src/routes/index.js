@@ -57,6 +57,7 @@ import adminLoginHistoryRoutes from "../modules/admin-login-history/admin-login-
 import rideRequestBidsRoutes from "../modules/ride-request-bids/ride-request-bids.routes.js";
 import rideRequestRatingsRoutes from "../modules/ride-request-ratings/ride-request-ratings.routes.js";
 import rideRequestHistoriesRoutes from "../modules/ride-request-histories/ride-request-histories.routes.js";
+import driversMeRoutes from "../modules/drivers-me/drivers-me.routes.js";
 
 import * as adminBrandingCtrl from "../modules/admin-branding/admin-branding.controller.js";
 import adminBrandingRoutes from "../modules/admin-branding/admin-branding.routes.js";
@@ -132,5 +133,7 @@ router.use("/admin-login-history", adminLoginHistoryRoutes);
 router.use("/ride-request-bids", rideRequestBidsRoutes);
 router.use("/ride-request-ratings", rideRequestRatingsRoutes);
 router.use("/ride-request-histories", rideRequestHistoriesRoutes);
+
+router.use("/drivers", driversMeRoutes);
 
 export default router;
