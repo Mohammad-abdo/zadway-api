@@ -15,6 +15,26 @@ const SEED_IMAGES = {
   ],
   driverLicenseSample:
     "https://images.unsplash.com/photo-1449965408869-eaa3aaf487df?w=800&q=80",
+  /** Per-size hero + galleries (distinct visuals for client variant picker). */
+  waterVariantSmallHero:
+    "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=80",
+  waterVariantSmallGallery: [
+    "https://images.unsplash.com/photo-1616116214959-51e0aa9b6eaf?w=1200&q=80",
+    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=80",
+  ],
+  waterVariantMediumHero:
+    "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200&q=80",
+  waterVariantMediumGallery: [
+    "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=80",
+    "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=80",
+  ],
+  waterVariantLargeHero:
+    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=80",
+  waterVariantLargeGallery: [
+    "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200&q=80",
+    "https://images.unsplash.com/photo-1616116214959-51e0aa9b6eaf?w=1200&q=80",
+    "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=80",
+  ],
 };
 
 const prisma = new PrismaClient();
@@ -597,6 +617,8 @@ async function main() {
       price: 1.0,
       stock: 200,
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantSmallHero,
+      images: SEED_IMAGES.waterVariantSmallGallery,
     },
     create: {
       productId: product.id,
@@ -606,6 +628,8 @@ async function main() {
       stock: 200,
       sku: "SEED-QARORA-WATER-SMALL",
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantSmallHero,
+      images: SEED_IMAGES.waterVariantSmallGallery,
     },
   });
 
@@ -618,6 +642,8 @@ async function main() {
       price: 1.5,
       stock: 320,
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantMediumHero,
+      images: SEED_IMAGES.waterVariantMediumGallery,
     },
     create: {
       productId: product.id,
@@ -627,6 +653,8 @@ async function main() {
       stock: 320,
       sku: "SEED-QARORA-WATER-MEDIUM",
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantMediumHero,
+      images: SEED_IMAGES.waterVariantMediumGallery,
     },
   });
 
@@ -639,6 +667,8 @@ async function main() {
       price: 2.25,
       stock: 180,
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantLargeHero,
+      images: SEED_IMAGES.waterVariantLargeGallery,
     },
     create: {
       productId: product.id,
@@ -648,6 +678,8 @@ async function main() {
       stock: 180,
       sku: "SEED-QARORA-WATER-LARGE",
       currency: "SAR",
+      imageUrl: SEED_IMAGES.waterVariantLargeHero,
+      images: SEED_IMAGES.waterVariantLargeGallery,
     },
   });
 

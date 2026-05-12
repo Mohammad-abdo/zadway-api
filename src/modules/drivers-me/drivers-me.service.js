@@ -2,24 +2,33 @@ import prisma from "../../config/prisma.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import { isDriverEligibleForOrder } from "../../services/productOrders/productOrderMatching.js";
 import * as clientService from "../client/client.service.js";
+import { enrichOrderLineItem, enrichVariantWithNestedProduct } from "../../core/utils/variantImages.js";
 
 const includeDetail = {
   driver: { select: { id: true, name: true, email: true, phone: true } },
   variant: {
     include: {
-      product: { select: { id: true, name: true, nameI18n: true, imageUrl: true, isActive: true } },
+      product: {
+        select: { id: true, name: true, nameI18n: true, imageUrl: true, images: true, isActive: true },
+      },
       size: { select: { id: true, name: true, nameI18n: true } },
       type: { select: { id: true, name: true, nameI18n: true } },
     },
   },
 };
 
+function enrichInventoryRow(row) {
+  if (!row?.variant) return row;
+  return { ...row, variant: enrichVariantWithNestedProduct(row.variant) };
+}
+
 export async function listMyInventory(driverId) {
-  return prisma.driverInventoryItem.findMany({
+  const rows = await prisma.driverInventoryItem.findMany({
     where: { driverId: Number(driverId) },
     orderBy: { id: "desc" },
     include: includeDetail,
   });
+  return rows.map(enrichInventoryRow);
 }
 
 /**
@@ -52,7 +61,7 @@ export async function createMyInventory(driverId, data) {
     },
     include: includeDetail,
   });
-  return row;
+  return enrichInventoryRow(row);
 }
 
 /**
@@ -79,11 +88,13 @@ export async function updateMyInventory(driverId, id, patch) {
   if (patch.quantityOnHand != null) data.quantityOnHand = Number(patch.quantityOnHand);
   if (patch.price != null) data.price = Number(patch.price);
   if (patch.currency != null) data.currency = String(patch.currency);
-  return prisma.driverInventoryItem.update({
-    where: { id: Number(id) },
-    data,
-    include: includeDetail,
-  });
+  return enrichInventoryRow(
+    await prisma.driverInventoryItem.update({
+      where: { id: Number(id) },
+      data,
+      include: includeDetail,
+    }),
+  );
 }
 
 /**
@@ -208,7 +219,10 @@ export async function getMyProductOrder(driverId, orderId) {
     throw e;
   }
   if (order.driverId === Number(driverId)) {
-    return clientService.stripAccessToken(order);
+    return clientService.stripAccessToken({
+      ...order,
+      items: order.items.map(enrichOrderLineItem),
+    });
   }
   if (order.status === "NEW" || order.status === "PENDING") {
     const lineItems = order.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity }));
@@ -219,7 +233,11 @@ export async function getMyProductOrder(driverId, orderId) {
       order.dropoffLng,
       driverId,
     );
-    if (ok) return clientService.stripAccessToken(order);
+    if (ok)
+      return clientService.stripAccessToken({
+        ...order,
+        items: order.items.map(enrichOrderLineItem),
+      });
   }
   const e = new Error("forbidden");
   e.statusCode = 403;

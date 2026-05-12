@@ -1,6 +1,10 @@
 import prisma from "../../config/prisma.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import * as productOrdersService from "../product-orders/product-orders.service.js";
+import {
+  enrichCatalogVariant,
+  enrichOrderLineItem,
+} from "../../core/utils/variantImages.js";
 
 /** @param {Record<string, unknown>} order */
 export function stripAccessToken(order) {
@@ -77,7 +81,7 @@ export async function resolveGuestIdForClientOrder(body, riderUser) {
 }
 
 export async function getCatalog() {
-  const [categories, products] = await Promise.all([
+  const [categories, productsRaw] = await Promise.all([
     prisma.category.findMany({ take: 200, orderBy: { id: "asc" } }),
     prisma.product.findMany({
       where: { isActive: true },
@@ -93,6 +97,10 @@ export async function getCatalog() {
       },
     }),
   ]);
+  const products = productsRaw.map((p) => ({
+    ...p,
+    variants: (p.variants || []).map((v) => enrichCatalogVariant(p, v)),
+  }));
   return { categories, products };
 }
 
@@ -111,10 +119,18 @@ export async function listVariantsForProduct(productId) {
     e.statusCode = 404;
     throw e;
   }
-  return prisma.productVariant.findMany({
+  const rows = await prisma.productVariant.findMany({
     where: { productId: p.id },
     orderBy: { id: "asc" },
-    include: { size: true, type: true, product: { select: { id: true, name: true, nameI18n: true } } },
+    include: {
+      size: true,
+      type: true,
+      product: { select: { id: true, name: true, nameI18n: true, imageUrl: true, images: true } },
+    },
+  });
+  return rows.map((row) => {
+    const { product, ...variant } = row;
+    return { ...enrichCatalogVariant(product || {}, variant), product };
   });
 }
 
@@ -170,10 +186,16 @@ export async function getClientOrder(orderId, auth) {
   }
   const hdr = auth.accessTokenHeader != null ? String(auth.accessTokenHeader).trim() : "";
   if (auth.riderUserId != null && order.riderUserId === Number(auth.riderUserId)) {
-    return stripAccessToken(order);
+    return stripAccessToken({
+      ...order,
+      items: order.items.map(enrichOrderLineItem),
+    });
   }
   if (hdr && order.accessToken && hdr === order.accessToken) {
-    return stripAccessToken(order);
+    return stripAccessToken({
+      ...order,
+      items: order.items.map(enrichOrderLineItem),
+    });
   }
   const e = new Error("forbidden");
   e.statusCode = 403;

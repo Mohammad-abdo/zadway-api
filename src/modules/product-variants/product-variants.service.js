@@ -5,6 +5,20 @@ import { parseListQuery } from "../../core/utils/pagination.js";
 const svc = createCrudService("productVariant", { searchableFields: [] });
 
 /** Empty SKU must be stored as null: unique index treats '' as duplicate across rows. */
+function parseJsonMaybe(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
 function normalizeVariantWrite(data) {
   if (!data || typeof data !== "object") return data;
   const out = { ...data };
@@ -12,6 +26,20 @@ function normalizeVariantWrite(data) {
     const raw = out.sku;
     const s = raw == null ? "" : String(raw).trim();
     out.sku = s === "" ? null : s;
+  }
+  if (Object.prototype.hasOwnProperty.call(out, "imageUrl")) {
+    const u = out.imageUrl == null ? "" : String(out.imageUrl).trim();
+    out.imageUrl = u === "" ? null : u;
+  }
+  if (Object.prototype.hasOwnProperty.call(out, "images")) {
+    if (Array.isArray(out.images)) {
+      out.images = out.images.length ? out.images : null;
+    } else if (out.images === "" || out.images == null) {
+      out.images = null;
+    } else {
+      const parsed = parseJsonMaybe(out.images);
+      out.images = parsed === undefined ? undefined : parsed;
+    }
   }
   return out;
 }

@@ -60,6 +60,10 @@ model ProductVariant {
   price     Decimal @db.Decimal(10, 2)
   stock     Int     @default(0)
   sku       String? @unique
+  /// Hero image for this size/type combo; falls back to `Product.imageUrl` in API when null.
+  imageUrl  String? @db.VarChar(512)
+  /// Extra gallery URLs (JSON array); falls back to `Product.images` in API when null/empty.
+  images    Json?
 
   product Product     @relation(fields: [productId], references: [id])
   size    Size        @relation(fields: [sizeId], references: [id])
