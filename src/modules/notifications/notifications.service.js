@@ -1,19 +1,43 @@
 import prisma from "../../config/prisma.js";
 import { createCrudService } from "../../core/crud/genericCrudService.js";
+import { toAdminNotification, toPrismaNotificationData } from "./notifications.mapper.js";
 
 const svc = createCrudService("notification", { searchableFields: ["type"] });
 
-export const list = (q) => svc.list(q);
-export const getById = (id) => svc.getById(id);
-export const create = (data) => svc.create(data);
-export const update = (id, data) => svc.update(id, data);
+export async function list(q) {
+  const { items, total, page, limit } = await svc.list(q);
+  return { items: items.map(toAdminNotification), total, page, limit };
+}
+
+export async function getById(id) {
+  const row = await svc.getById(id);
+  return toAdminNotification(row);
+}
+
+export async function create(data) {
+  const prismaData = toPrismaNotificationData(data);
+  const row = await prisma.notification.create({ data: prismaData });
+  return toAdminNotification(row);
+}
+
+export async function update(id, data) {
+  const existing = await prisma.notification.findUnique({ where: { id: Number(id) } });
+  const prismaData = toPrismaNotificationData(data, { existing });
+  const row = await prisma.notification.update({
+    where: { id: Number(id) },
+    data: prismaData,
+  });
+  return toAdminNotification(row);
+}
+
 export const remove = (id) => svc.remove(id);
 
 export async function markRead(id) {
-  return prisma.notification.update({
+  const row = await prisma.notification.update({
     where: { id: Number(id) },
     data: { isRead: true, readAt: new Date() },
   });
+  return toAdminNotification(row);
 }
 
 export async function markAllReadForUser(userId) {

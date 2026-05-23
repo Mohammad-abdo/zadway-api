@@ -7,7 +7,11 @@ import {
   findEligibleDriversSorted,
   isDriverEligibleForOrder,
 } from "../../services/productOrders/productOrderMatching.js";
-import { emitProductOrderToDrivers } from "../../realtime/wsHub.js";
+import {
+  emitNewProductOrderToDrivers,
+  notifyOrderClaimed,
+  notifyOrderStatusChanged,
+} from "../../realtime/wsEvents.js";
 
 const svc = createCrudService("productOrder", { searchableFields: [] });
 
@@ -27,21 +31,55 @@ const invoiceInclude = {
   },
 };
 
+const TERMINAL_ORDER_STATUSES = new Set(["DELIVERED", "CANCELLED", "REJECTED"]);
+
+const ALLOWED_ORDER_STATUS_TRANSITIONS = {
+  NEW: ["PENDING", "ACCEPTED", "REJECTED", "CANCELLED"],
+  PENDING: ["NEW", "ACCEPTED", "REJECTED", "CANCELLED"],
+  ACCEPTED: ["PICKED_UP", "ON_THE_WAY", "DELIVERED", "CANCELLED"],
+  PICKED_UP: ["ON_THE_WAY", "DELIVERED", "CANCELLED"],
+  ON_THE_WAY: ["DELIVERED", "CANCELLED"],
+  REJECTED: [],
+  DELIVERED: [],
+  CANCELLED: [],
+};
+
 /**
  * @param {string} current
  * @param {string} next
  */
 export function assertOrderStatusTransition(current, next) {
   if (current === next) return;
-  if (current === "DELIVERED") {
-    const e = new Error("Cannot change status: order is already delivered.");
+  if (TERMINAL_ORDER_STATUSES.has(current)) {
+    const e = new Error(`Cannot change status: order is already ${String(current).toLowerCase()}.`);
     e.statusCode = 400;
     throw e;
   }
-  if (next === "DELIVERED" && current !== "ACCEPTED") {
-    const e = new Error("Delivered status is only allowed after the order is accepted.");
+  if (next === "DELIVERED" && !["ACCEPTED", "PICKED_UP", "ON_THE_WAY"].includes(current)) {
+    const e = new Error(
+      "Delivered status is only allowed after the order is accepted and in progress.",
+    );
     e.statusCode = 400;
     throw e;
+  }
+  const allowed = ALLOWED_ORDER_STATUS_TRANSITIONS[current];
+  if (!allowed?.includes(next)) {
+    const e = new Error(`Invalid status transition from ${current} to ${next}.`);
+    e.statusCode = 400;
+    throw e;
+  }
+}
+
+/**
+ * @param {Record<string, unknown>} patch
+ * @param {string} status
+ */
+function applyStatusSideEffects(patch, status) {
+  if (status === "DELIVERED") {
+    patch.deliveredAt = new Date();
+  }
+  if (status === "CANCELLED") {
+    patch.cancelledAt = new Date();
   }
 }
 
@@ -150,13 +188,52 @@ export async function create(data) {
 
   const dropLat = Number(dropoffLat);
   const dropLng = Number(dropoffLng);
-  if (normalizedItems.length) {
-    await assertEligibleDriversExist(
-      prisma,
-      normalizedItems.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
-      dropLat,
-      dropLng,
-    );
+  const lineItems = normalizedItems.map((it) => ({
+    variantId: it.variantId,
+    quantity: it.quantity,
+  }));
+
+  const requestedDriverId =
+    driverId != null && String(driverId).trim() !== "" ? Number(driverId) : null;
+
+  if (requestedDriverId != null) {
+    if (!Number.isFinite(requestedDriverId) || requestedDriverId < 1) {
+      const e = new Error("driverId must be a positive integer");
+      e.statusCode = 400;
+      throw e;
+    }
+    const driverUser = await prisma.user.findUnique({
+      where: { id: requestedDriverId },
+      select: { id: true, userType: true, status: true },
+    });
+    if (!driverUser || String(driverUser.userType || "").toLowerCase() !== "driver") {
+      const e = new Error("driver not found");
+      e.statusCode = 404;
+      throw e;
+    }
+    if (String(driverUser.status || "").toLowerCase() === "inactive") {
+      const e = new Error("driver is not active");
+      e.statusCode = 400;
+      throw e;
+    }
+    if (lineItems.length) {
+      const eligible = await isDriverEligibleForOrder(
+        prisma,
+        lineItems,
+        dropLat,
+        dropLng,
+        requestedDriverId,
+      );
+      if (!eligible) {
+        const e = new Error(
+          "Specified driver does not have sufficient inventory near this location for the requested items.",
+        );
+        e.statusCode = 400;
+        throw e;
+      }
+    }
+  } else if (lineItems.length) {
+    await assertEligibleDriversExist(prisma, lineItems, dropLat, dropLng);
   }
 
   const accessToken = randomBytes(24).toString("hex");
@@ -164,7 +241,8 @@ export async function create(data) {
   const row = await prisma.productOrder.create({
     data: {
       guestId: Number(guestId),
-      driverId: driverId != null ? Number(driverId) : undefined,
+      driverId: requestedDriverId ?? undefined,
+      assignedAt: requestedDriverId != null ? new Date() : undefined,
       riderUserId: riderUserId != null ? Number(riderUserId) : undefined,
       accessToken,
       status: initialStatus,
@@ -185,15 +263,13 @@ export async function create(data) {
     include: { items: true },
   });
 
-  if (normalizedItems.length) {
-    const sorted = await findEligibleDriversSorted(
-      prisma,
-      normalizedItems.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
-      dropLat,
-      dropLng,
-    );
-    const driverIds = sorted.map((s) => s.driverId);
-    emitProductOrderToDrivers(driverIds, {
+  if (lineItems.length) {
+    const sorted = await findEligibleDriversSorted(prisma, lineItems, dropLat, dropLng);
+    const driverIds =
+      requestedDriverId != null
+        ? [requestedDriverId]
+        : sorted.map((s) => s.driverId);
+    emitNewProductOrderToDrivers(driverIds, {
       orderId: row.id,
       guestId: row.guestId,
       status: row.status,
@@ -219,13 +295,14 @@ export async function update(id, data) {
     throw e;
   }
   const patch = { ...(data || {}) };
+  const oldStatus = row.status;
   if (Object.prototype.hasOwnProperty.call(patch, "status") && patch.status !== undefined) {
     assertOrderStatusTransition(row.status, patch.status);
-    if (patch.status === "DELIVERED") {
-      patch.deliveredAt = new Date();
-    }
+    applyStatusSideEffects(patch, patch.status);
   }
-  return prisma.productOrder.update({ where: { id: numId }, data: patch });
+  const updated = await prisma.productOrder.update({ where: { id: numId }, data: patch });
+  notifyOrderStatusChanged(updated, oldStatus);
+  return updated;
 }
 
 export const remove = (id) => svc.remove(id);
@@ -238,15 +315,16 @@ export async function updateStatus(id, status) {
     e.statusCode = 404;
     throw e;
   }
+  const oldStatus = row.status;
   assertOrderStatusTransition(row.status, status);
   const data = { status };
-  if (status === "DELIVERED") {
-    data.deliveredAt = new Date();
-  }
-  return prisma.productOrder.update({
+  applyStatusSideEffects(data, status);
+  const updated = await prisma.productOrder.update({
     where: { id: numId },
     data,
   });
+  notifyOrderStatusChanged(updated, oldStatus);
+  return updated;
 }
 
 export async function assignDriver(orderId, driverId) {
@@ -304,7 +382,8 @@ export async function acceptOffer(orderId, offerId) {
       data: { status: "ACCEPTED" },
     });
 
-    return tx.productOrder.update({
+    const oldStatus = order.status;
+    const updated = await tx.productOrder.update({
       where: { id: Number(orderId) },
       data: {
         driverId: offer.driverId,
@@ -313,6 +392,8 @@ export async function acceptOffer(orderId, offerId) {
       },
       include: { items: true, guest: true, driver: { select: { id: true, name: true, phone: true } } },
     });
+    notifyOrderStatusChanged(updated, oldStatus);
+    return updated;
   });
 }
 
@@ -339,6 +420,8 @@ export async function claimProductOrder(orderId, driverId) {
     if (order.status === "ACCEPTED" && order.driverId === did) {
       return order;
     }
+
+    const oldStatus = order.status;
 
     if (order.status !== "NEW" && order.status !== "PENDING") {
       const e = new Error("Order is no longer available to claim.");
@@ -398,7 +481,7 @@ export async function claimProductOrder(orderId, driverId) {
       },
     });
 
-    return tx.productOrder.findUnique({
+    const claimed = await tx.productOrder.findUnique({
       where: { id: oid },
       include: {
         items: true,
@@ -406,5 +489,7 @@ export async function claimProductOrder(orderId, driverId) {
         driver: { select: { id: true, name: true, phone: true } },
       },
     });
+    notifyOrderClaimed(claimed, oldStatus);
+    return claimed;
   });
 }

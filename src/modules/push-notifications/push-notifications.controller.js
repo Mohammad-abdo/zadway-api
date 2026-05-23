@@ -18,16 +18,17 @@ export async function getById(req, res) {
     if (!row) return errorResponse(res, t("db.not_found", req.locale), 404);
     return successResponse(res, row, t("common.success", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 
 export async function create(req, res) {
   try {
+    // Body is mapped in service (audience → forRider/forDriver); never pass audience to Prisma.
     const row = await service.create(req.body);
     return successResponse(res, row, t("common.created", req.locale), 201);
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 
@@ -36,7 +37,7 @@ export async function update(req, res) {
     const row = await service.update(req.params.id, req.body);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 

@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { PRODUCT_ORDER_STATUSES } from "../../realtime/wsEvents.js";
+
+const productOrderStatusEnum = z.enum(PRODUCT_ORDER_STATUSES);
 
 export const idParamSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
@@ -20,7 +23,7 @@ export const createSchema = z.object({
     .object({
       guestId: z.coerce.number().int().positive(),
       driverId: z.coerce.number().int().positive().optional().nullable(),
-      status: z.enum(["NEW", "PENDING", "ACCEPTED", "REJECTED"]).optional(),
+      status: productOrderStatusEnum.optional(),
       paymentMethod: z.enum(["CASH"]).optional(),
       dropoffLat: z.coerce.number().min(-90).max(90),
       dropoffLng: z.coerce.number().min(-180).max(180),
@@ -47,7 +50,7 @@ export const updateSchema = z.object({
     .object({
       guestId: z.coerce.number().int().positive().optional(),
       driverId: z.coerce.number().int().positive().optional().nullable(),
-      status: z.enum(["NEW", "PENDING", "ACCEPTED", "REJECTED", "DELIVERED"]).optional(),
+      status: productOrderStatusEnum.optional(),
       paymentMethod: z.enum(["CASH"]).optional(),
       dropoffLat: z.coerce.number().min(-90).max(90).optional(),
       dropoffLng: z.coerce.number().min(-180).max(180).optional(),
@@ -62,7 +65,7 @@ export const updateSchema = z.object({
 export const statusSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
   body: z.object({
-    status: z.enum(["NEW", "PENDING", "ACCEPTED", "REJECTED", "DELIVERED"]),
+    status: productOrderStatusEnum,
   }),
 });
 

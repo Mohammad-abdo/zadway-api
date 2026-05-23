@@ -1,4 +1,5 @@
 import { WebSocketServer } from "ws";
+import prisma from "../config/prisma.js";
 import { verifyToken } from "../core/utils/jwtHelper.js";
 import { registerUserSocket, setWsServer } from "./wsHub.js";
 
@@ -15,7 +16,7 @@ export function initWsServer(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
   setWsServer(wss);
 
-  wss.on("connection", (socket, req) => {
+  wss.on("connection", async (socket, req) => {
     const token = parseToken(req);
     if (!token) {
       socket.close(1008, "Missing token");
@@ -30,18 +31,27 @@ export function initWsServer(httpServer) {
       return;
     }
 
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: Number(socket.userId) },
+        select: { userType: true },
+      });
+      socket.userType = user?.userType ?? null;
+    } catch {
+      socket.userType = null;
+    }
+
     registerUserSocket(socket, socket.userId);
 
     socket.send(
       JSON.stringify({
         event: "connected",
-        payload: { ok: true },
+        payload: { ok: true, userId: socket.userId, userType: socket.userType },
         ts: Date.now(),
-      })
+      }),
     );
 
     socket.on("message", (raw) => {
-      // optional: handle subscriptions/pings
       try {
         const msg = JSON.parse(raw.toString());
         if (msg?.event === "ping") {
@@ -55,4 +65,3 @@ export function initWsServer(httpServer) {
 
   return wss;
 }
-

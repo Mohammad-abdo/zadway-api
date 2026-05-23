@@ -1,7 +1,10 @@
 import * as service from "./product-order-location-updates.service.js";
 import { successResponse, paginatedResponse, errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
-import { broadcast } from "../../realtime/wsHub.js";
+import {
+  broadcastProductOrderLocationCreated,
+  broadcastProductOrderLocationUpdated,
+} from "../../realtime/wsEvents.js";
 
 export async function list(req, res) {
   try {
@@ -26,7 +29,7 @@ export async function getById(req, res) {
 export async function create(req, res) {
   try {
     const row = await service.create(req.body);
-    broadcast("product_order_location_update.created", row);
+    broadcastProductOrderLocationCreated(row);
     return successResponse(res, row, t("common.created", req.locale), 201);
   } catch (e) {
     return errorResponse(res, e.message, 500);
@@ -36,7 +39,7 @@ export async function create(req, res) {
 export async function update(req, res) {
   try {
     const row = await service.update(req.params.id, req.body);
-    broadcast("product_order_location_update.updated", row);
+    broadcastProductOrderLocationUpdated(row);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
     return errorResponse(res, e.message, 500);

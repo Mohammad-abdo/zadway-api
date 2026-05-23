@@ -1,5 +1,6 @@
 /**
- * Socket.IO helper functions (moved under src/core).
+ * Legacy Socket.IO helper stubs (unused at runtime).
+ * Realtime delivery uses native `ws` — see `src/realtime/wsEvents.js`.
  */
 export function emitToUser(io, userId, event, data) {
   if (!io) return;
@@ -49,5 +50,13 @@ export function emitDriverLocationUpdate(io, driverId, data) {
   });
 }
 
-export { emitProductOrderToDrivers } from "../../realtime/wsHub.js";
+export {
+  emitNewProductOrderToDrivers,
+  emitOrderClaimed,
+  emitOrderStatusChanged,
+  emitDriverLocationUpdated,
+  WS_EVENTS,
+} from "../../realtime/wsEvents.js";
 
+/** @deprecated Use `emitNewProductOrderToDrivers` from `wsEvents.js`. */
+export { emitProductOrderToDrivers } from "../../realtime/wsHub.js";

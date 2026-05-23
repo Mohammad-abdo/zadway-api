@@ -35,19 +35,25 @@ function sanitizeWrite(body) {
   return out;
 }
 
-export async function list(q) {
+export async function list(q, { activeOnly = false } = {}) {
   const parsed = parseListQuery(q, { searchableFields: ["title", "description"] });
+  const where = activeOnly ? { ...parsed.where, isActive: true } : parsed.where;
   const [items, total] = await Promise.all([
     prisma.banner.findMany({
-      where: parsed.where,
+      where,
       skip: parsed.skip,
       take: parsed.take,
       orderBy: parsed.orderBy,
       include: productInclude,
     }),
-    prisma.banner.count({ where: parsed.where }),
+    prisma.banner.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
+}
+
+/** Public/mobile catalog — active banners only. */
+export function listPublic(q) {
+  return list(q, { activeOnly: true });
 }
 
 export function getById(id) {

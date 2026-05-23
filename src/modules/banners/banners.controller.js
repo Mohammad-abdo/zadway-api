@@ -14,7 +14,7 @@ export async function list(req, res) {
 
 export async function getBanner(req, res) {
   try {
-    const { items, total, page, limit } = await service.list(req.query);
+    const { items, total, page, limit } = await service.listPublic(req.query);
     const pages = Math.max(1, Math.ceil(total / limit));
     return paginatedResponse(res, items, { page, limit, total, pages }, t("common.success", req.locale));
   } catch (e) {

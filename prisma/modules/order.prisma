@@ -2,8 +2,11 @@ enum ProductOrderStatus {
   NEW
   PENDING
   ACCEPTED
+  PICKED_UP
+  ON_THE_WAY
   REJECTED
   DELIVERED
+  CANCELLED
 }
 
 enum ProductPaymentMethod {

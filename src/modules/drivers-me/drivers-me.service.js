@@ -1,4 +1,5 @@
 import prisma from "../../config/prisma.js";
+import { emitDriverLocationUpdated } from "../../realtime/wsEvents.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import { isDriverEligibleForOrder } from "../../services/productOrders/productOrderMatching.js";
 import * as clientService from "../client/client.service.js";
@@ -140,11 +141,23 @@ export async function updateMyLocation(driverId, body) {
     data.currentHeading = Number(body.currentHeading);
   }
   data.lastLocationUpdateAt = new Date();
-  return prisma.user.update({
+  const row = await prisma.user.update({
     where: { id: Number(driverId) },
     data,
     select: { id: true, latitude: true, longitude: true, currentHeading: true, lastLocationUpdateAt: true },
   });
+
+  if (row.latitude != null && row.longitude != null) {
+    emitDriverLocationUpdated({
+      driverId: row.id,
+      lat: Number(row.latitude),
+      lng: Number(row.longitude),
+      updatedAt: row.lastLocationUpdateAt,
+      heading: row.currentHeading,
+    });
+  }
+
+  return row;
 }
 
 /**

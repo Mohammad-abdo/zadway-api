@@ -3,7 +3,16 @@ export function getAdminMeta() {
   return {
     version: 1,
     statusOptions: {
-      productOrders: ["NEW", "PENDING", "ACCEPTED", "REJECTED", "DELIVERED"],
+      productOrders: [
+        "NEW",
+        "PENDING",
+        "ACCEPTED",
+        "PICKED_UP",
+        "ON_THE_WAY",
+        "REJECTED",
+        "DELIVERED",
+        "CANCELLED",
+      ],
       productOrderOffers: ["PENDING", "ACCEPTED", "REJECTED"],
       complaints: ["pending", "resolved", "closed"],
       customerSupports: ["pending", "resolved", "closed"],

@@ -27,7 +27,7 @@ export async function create(req, res) {
     const row = await service.create(req.body);
     return successResponse(res, row, t("common.created", req.locale), 201);
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 
@@ -36,7 +36,7 @@ export async function update(req, res) {
     const row = await service.update(req.params.id, req.body);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 

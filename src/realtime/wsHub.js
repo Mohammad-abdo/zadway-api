@@ -34,6 +34,11 @@ export function unregisterUserSocket(socket, userId) {
   if (set.size === 0) socketsByUserId.delete(userId);
 }
 
+/**
+ * @param {import("ws").WebSocket} socket
+ * @param {string} event
+ * @param {unknown} payload
+ */
 function sendToSocket(socket, event, payload) {
   if (socket.readyState !== 1) return;
   try {
@@ -44,6 +49,7 @@ function sendToSocket(socket, event, payload) {
 }
 
 /**
+ * Targeted delivery to specific user ids (driver / rider mobile apps).
  * @param {Iterable<number>} userIds
  * @param {string} event
  * @param {unknown} payload
@@ -51,9 +57,10 @@ function sendToSocket(socket, event, payload) {
 export function emitToUsers(userIds, event, payload) {
   const seen = new Set();
   for (const userId of userIds) {
-    if (seen.has(userId)) continue;
-    seen.add(userId);
-    const set = socketsByUserId.get(userId);
+    const id = Number(userId);
+    if (!Number.isFinite(id) || id < 1 || seen.has(id)) continue;
+    seen.add(id);
+    const set = socketsByUserId.get(id);
     if (!set) continue;
     for (const socket of set) {
       sendToSocket(socket, event, payload);
@@ -62,14 +69,24 @@ export function emitToUsers(userIds, event, payload) {
 }
 
 /**
- * Notify drivers about a new product order they may claim.
- * @param {number[]} driverIds
+ * Admin dashboard clients only (`socket.userType === "admin"` set at connect).
+ * @param {string} event
  * @param {unknown} payload
  */
-export function emitProductOrderToDrivers(driverIds, payload) {
-  emitToUsers(driverIds, "new_product_order", payload);
+export function emitToAdmins(event, payload) {
+  if (!wss) return;
+  for (const client of wss.clients) {
+    if (client.readyState !== 1) continue;
+    if (String(client.userType || "").toLowerCase() !== "admin") continue;
+    sendToSocket(client, event, payload);
+  }
 }
 
+/**
+ * Broadcast to every connected WebSocket client (admin Tracking, legacy feeds).
+ * @param {string} event
+ * @param {unknown} payload
+ */
 export function broadcast(event, payload) {
   if (!wss) return;
   const msg = JSON.stringify({ event, payload, ts: Date.now() });
@@ -82,4 +99,13 @@ export function broadcast(event, payload) {
       }
     }
   }
+}
+
+/**
+ * @deprecated Prefer `emitNewProductOrderToDrivers` from `./wsEvents.js`.
+ * @param {number[]} driverIds
+ * @param {unknown} payload
+ */
+export function emitProductOrderToDrivers(driverIds, payload) {
+  emitToUsers(driverIds, "new_product_order", payload);
 }

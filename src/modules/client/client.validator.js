@@ -23,6 +23,8 @@ export const clientCreateOrderSchema = z.object({
     currency: z.string().trim().min(1).optional().nullable(),
     items: z.array(orderItemSchema).optional(),
     paymentMethod: z.enum(["CASH"]).optional(),
+    /** Optional: pre-assign driver at creation (admin / dispatch). */
+    driverId: z.coerce.number().int().positive().optional().nullable(),
   }),
 });
 
