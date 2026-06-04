@@ -1,6 +1,10 @@
+import fs from "fs/promises";
+import path from "path";
 import * as service from "./auth.service.js";
 import { successResponse, errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
+import { allocateSequentialFilename } from "../../core/upload/allocateSequentialFile.js";
+import { ensureUploadDirs } from "../../core/upload/mediaPaths.js";
 
 export async function login(req, res) {
   try {
@@ -37,6 +41,28 @@ export async function updateMe(req, res) {
     return successResponse(res, user, t("common.success", req.locale));
   } catch (e) {
     return errorResponse(res, e.message || t("common.error", req.locale), e.statusCode || 400);
+  }
+}
+
+export async function uploadAvatar(req, res) {
+  const locale = req.locale ?? "ar";
+  try {
+    const file = req.file;
+    if (!file?.buffer?.length) {
+      return errorResponse(res, "لم يتم إرسال ملف", 400);
+    }
+    const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" }[file.mimetype];
+    if (!ext) return errorResponse(res, "نوع الملف غير مدعوم", 415);
+
+    ensureUploadDirs();
+    const { absolutePath, publicUrl } = allocateSequentialFilename("image", ext);
+    await fs.writeFile(absolutePath, file.buffer);
+
+    // Update user's avatar in DB
+    const user = await service.updateMe(req.user.id, { avatar: publicUrl });
+    return successResponse(res, { url: publicUrl, user }, t("common.success", locale), 201);
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
   }
 }
 
