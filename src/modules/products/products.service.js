@@ -11,6 +11,15 @@ const VARIANT_INCLUDE = {
   },
 };
 
+// For detail view — returns ALL variants + category
+const DETAIL_INCLUDE = {
+  variants: {
+    orderBy: { id: "asc" },
+    include: { size: true, type: true },
+  },
+  category: true,
+};
+
 function parseJsonMaybe(value) {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value === "object" && !Array.isArray(value)) return value;
@@ -137,7 +146,7 @@ export async function getById(id) {
   const numId = Number(id);
   const row = await prisma.product.findUnique({
     where: { id: numId },
-    include: VARIANT_INCLUDE,
+    include: DETAIL_INCLUDE,   // ALL variants + category for detail view
   });
   if (!row) return null;
   return flattenForForm(attachListPrice(row));
