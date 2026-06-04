@@ -140,6 +140,30 @@ export async function me(userId) {
   };
 }
 
+export async function updateMe(userId, body) {
+  // Only allow safe fields for self-update
+  const { name, displayName, avatar } = body;
+  const data = {};
+  if (name !== undefined) data.name = String(name).trim() || null;
+  if (displayName !== undefined) data.displayName = String(displayName).trim() || null;
+  if (avatar !== undefined) data.avatar = avatar;
+
+  if (Object.keys(data).length === 0) {
+    const e = new Error("no fields to update");
+    e.statusCode = 400;
+    throw e;
+  }
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data,
+    select: {
+      id: true, name: true, email: true, phone: true,
+      userType: true, displayName: true, avatar: true,
+    },
+  });
+  return user;
+}
+
 export async function publicRegister(body) {
   const { name, email, phone, role, avatar, password, paddword } = body;
   const plainPassword = password || paddword;

@@ -9,5 +9,6 @@ const r = Router();
 r.post("/login", validate(v.loginSchema), ctrl.login);
 r.post("/register", validate(v.registerSchema), ctrl.register);
 r.get("/me", authenticate, ctrl.me);
+r.patch("/me", authenticate, ctrl.updateMe);
 
 export default r;
