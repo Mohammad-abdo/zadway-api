@@ -8,6 +8,12 @@ import * as v from "./customer-supports.validator.js";
 const r = Router();
 const PERM = "customer_supports.manage";
 
+// ── Self-service: any authenticated user ──────────────────────────────────
+r.post("/me", authenticate, ctrl.createMine);
+r.get("/me", authenticate, ctrl.listMine);
+r.post("/me/:id/messages", authenticate, ctrl.addMessageMine);
+
+// ── Admin-only ─────────────────────────────────────────────────────────────
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
 r.post(
   "/:id/messages",

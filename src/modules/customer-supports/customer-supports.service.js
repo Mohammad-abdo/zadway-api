@@ -9,6 +9,14 @@ export const create = (data) => svc.create(data);
 export const update = (id, data) => svc.update(id, data);
 export const remove = (id) => svc.remove(id);
 
+export async function listByUser(userId) {
+  return prisma.customerSupport.findMany({
+    where: { userId: Number(userId) },
+    orderBy: { createdAt: "desc" },
+    include: { chatHistories: { orderBy: { createdAt: "asc" } } },
+  });
+}
+
 export async function addChatMessage(supportId, { message, senderType }) {
   return prisma.supportChathistory.create({
     data: {

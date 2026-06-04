@@ -57,3 +57,43 @@ export async function addMessage(req, res) {
     return errorResponse(res, e.message, 500);
   }
 }
+
+// ── Self-service ──────────────────────────────────────────────────────────
+export async function createMine(req, res) {
+  try {
+    const row = await service.create({
+      ...req.body,
+      userId: req.user.id,
+      status: "open",
+    });
+    return successResponse(res, row, t("common.created", req.locale), 201);
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
+export async function listMine(req, res) {
+  try {
+    const rows = await service.listByUser(req.user.id);
+    return successResponse(res, rows, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
+export async function addMessageMine(req, res) {
+  try {
+    // Verify ticket belongs to this user before allowing message
+    const ticket = await service.getById(req.params.id);
+    if (!ticket || ticket.userId !== req.user.id) {
+      return errorResponse(res, t("db.not_found", req.locale), 404);
+    }
+    const row = await service.addChatMessage(req.params.id, {
+      ...req.body,
+      senderType: "user",
+    });
+    return successResponse(res, row, t("common.created", req.locale), 201);
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
