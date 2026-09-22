@@ -1326,6 +1326,48 @@
           ]
         },
         {
+          "name": "Get Public Offers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/public/offers?page={{page}}&limit={{limit}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "public",
+                "offers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "{{limit}}"
+                }
+              ]
+            },
+            "description": "Active home offers (coupons) for the mobile عروض section. Also available at GET /coupons/all."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test('Success is true', () => pm.expect(res.success).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "Get CMS Page (Public)",
           "request": {
             "method": "GET",
