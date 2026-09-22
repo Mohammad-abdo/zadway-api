@@ -13,6 +13,16 @@ export async function list(req, res) {
   }
 }
 
+export async function listMine(req, res) {
+  try {
+    const { items, total, page, limit } = await service.listMine(req.user.id, req.query);
+    const pages = Math.max(1, Math.ceil(total / limit));
+    return paginatedResponse(res, items, { page, limit, total, pages }, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
 export async function getById(req, res) {
   try {
     const row = await service.getById(req.params.id);

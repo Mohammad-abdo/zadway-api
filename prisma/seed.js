@@ -35,6 +35,12 @@ const SEED_IMAGES = {
     "https://images.unsplash.com/photo-1616116214959-51e0aa9b6eaf?w=1200&q=80",
     "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=80",
   ],
+  bannerDelivery:
+    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1400&q=85",
+  bannerPure:
+    "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1400&q=85",
+  bannerOffice:
+    "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1400&q=85",
 };
 
 const prisma = new PrismaClient();
@@ -685,6 +691,83 @@ async function main() {
 
   /** Default variant for sample order / inventory logs (medium bottle). */
   const variant = variantMedium;
+
+  // ---- Home banners (public GET /banners/all) ----
+  const bannerDefs = [
+    {
+      title: "توصيل مياه نقية لباب بيتك",
+      description: "اطلب الآن واستلم خلال 30–45 دقيقة داخل بغداد",
+      image: SEED_IMAGES.bannerDelivery,
+    },
+    {
+      title: "مياه معتمدة • نقاوة عالية",
+      description: "قوارير معقمة بمعايير صحية — ادفع عند الاستلام",
+      image: SEED_IMAGES.bannerPure,
+    },
+    {
+      title: "عرض المكاتب والشركات",
+      description: "كراتين وعبوات كبيرة بأسعار جملة للتوصيل الدوري",
+      image: SEED_IMAGES.bannerOffice,
+    },
+  ];
+  for (const b of bannerDefs) {
+    const existing = await prisma.banner.findFirst({ where: { title: b.title } });
+    if (existing) {
+      await prisma.banner.update({
+        where: { id: existing.id },
+        data: { description: b.description, image: b.image, productId: product.id, isActive: true },
+      });
+    } else {
+      await prisma.banner.create({
+        data: {
+          title: b.title,
+          description: b.description,
+          image: b.image,
+          productId: product.id,
+          isActive: true,
+        },
+      });
+    }
+  }
+
+  // ---- Sample notifications for seed riders ----
+  for (const r of riders) {
+    const existingWelcome = await prisma.notification.findFirst({
+      where: { notifiableType: "User", notifiableId: r.user.id, type: "welcome" },
+    });
+    if (!existingWelcome) {
+      await prisma.notification.create({
+        data: {
+          type: "welcome",
+          notifiableType: "User",
+          notifiableId: r.user.id,
+          data: {
+            title: "مرحباً بك في زادواي",
+            body: "اطلب مياه نقية واستلمها بسرعة داخل بغداد. تابع حالة طلبك من الإشعارات.",
+          },
+          isRead: false,
+        },
+      });
+    }
+    const existingOrderTip = await prisma.notification.findFirst({
+      where: { notifiableType: "User", notifiableId: r.user.id, type: "order_status_changed" },
+    });
+    if (!existingOrderTip) {
+      await prisma.notification.create({
+        data: {
+          type: "order_status_changed",
+          notifiableType: "User",
+          notifiableId: r.user.id,
+          data: {
+            title: "تحديثات الطلبات هنا",
+            body: "عند تأكيد طلبك ستصلك إشعارات فورية بحالة التوصيل في هذه الصفحة.",
+          },
+          isRead: true,
+          readAt: new Date(),
+        },
+      });
+    }
+  }
 
   // ---- Coupons ----
   await prisma.coupon.upsert({

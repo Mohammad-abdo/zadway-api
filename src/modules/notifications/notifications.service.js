@@ -9,6 +9,26 @@ export async function list(q) {
   return { items: items.map(toAdminNotification), total, page, limit };
 }
 
+/** Mobile: notifications for the authenticated user only. */
+export async function listMine(userId, q = {}) {
+  const page = Math.max(1, Number(q.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(q.limit) || 30));
+  const where = {
+    notifiableType: "User",
+    notifiableId: Number(userId),
+  };
+  const [total, rows] = await Promise.all([
+    prisma.notification.count({ where }),
+    prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+  ]);
+  return { items: rows.map(toAdminNotification), total, page, limit };
+}
+
 export async function getById(id) {
   const row = await svc.getById(id);
   return toAdminNotification(row);

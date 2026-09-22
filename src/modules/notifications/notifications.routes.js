@@ -9,6 +9,7 @@ const r = Router();
 const PERM = "notifications.manage";
 
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
+r.get("/mine", authenticate, validate(v.listQuerySchema), ctrl.listMine);
 r.post("/read-all", authenticate, ctrl.markAllRead);
 r.post("/:id/read", authenticate, validate(v.idParamSchema), ctrl.markRead);
 r.get("/:id", authenticate, requireResourceAccess(PERM), validate(v.idParamSchema), ctrl.getById);
