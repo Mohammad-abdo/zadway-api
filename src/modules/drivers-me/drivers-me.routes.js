@@ -18,5 +18,6 @@ r.get("/me/product-orders", validate(v.driverOrdersListSchema), ctrl.listProduct
 r.get("/me/product-orders/:orderId", validate(v.driverOrderIdParamSchema), ctrl.getProductOrder);
 r.post("/me/product-orders/:orderId/offers", validate(v.driverOfferSchema), ctrl.upsertOffer);
 r.post("/me/product-orders/:orderId/claim", validate(v.claimOrderSchema), ctrl.claimProductOrder);
+r.patch("/me/product-orders/:orderId/status", validate(v.driverOrderStatusSchema), ctrl.updateProductOrderStatus);
 
 export default r;

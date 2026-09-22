@@ -3,6 +3,7 @@ import { emitDriverLocationUpdated } from "../../realtime/wsEvents.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import { isDriverEligibleForOrder } from "../../services/productOrders/productOrderMatching.js";
 import * as clientService from "../client/client.service.js";
+import * as productOrdersService from "../product-orders/product-orders.service.js";
 import { enrichOrderLineItem, enrichVariantWithNestedProduct } from "../../core/utils/variantImages.js";
 
 const includeDetail = {
@@ -308,4 +309,33 @@ export async function upsertMyOffer(driverId, orderId, offeredPrice) {
       status: "PENDING",
     },
   });
+}
+
+const DRIVER_PROGRESS_STATUSES = new Set(["PICKED_UP", "ON_THE_WAY", "DELIVERED"]);
+
+/**
+ * Assigned captain advances delivery: ACCEPTED → PICKED_UP → ON_THE_WAY → DELIVERED.
+ * @param {number} driverId
+ * @param {number|string} orderId
+ * @param {string} status
+ */
+export async function updateMyProductOrderStatus(driverId, orderId, status) {
+  const next = String(status || "").toUpperCase();
+  if (!DRIVER_PROGRESS_STATUSES.has(next)) {
+    const e = new Error("Drivers may only set PICKED_UP, ON_THE_WAY, or DELIVERED.");
+    e.statusCode = 400;
+    throw e;
+  }
+  const order = await prisma.productOrder.findUnique({ where: { id: Number(orderId) } });
+  if (!order) {
+    const e = new Error("not found");
+    e.statusCode = 404;
+    throw e;
+  }
+  if (order.driverId !== Number(driverId)) {
+    const e = new Error("forbidden");
+    e.statusCode = 403;
+    throw e;
+  }
+  return productOrdersService.updateStatus(orderId, next);
 }

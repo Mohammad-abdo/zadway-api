@@ -84,3 +84,16 @@ export async function upsertOffer(req, res) {
     return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
+
+export async function updateProductOrderStatus(req, res) {
+  try {
+    const row = await service.updateMyProductOrderStatus(
+      req.user.id,
+      req.params.orderId,
+      req.body?.status,
+    );
+    return successResponse(res, row, t("common.updated", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}

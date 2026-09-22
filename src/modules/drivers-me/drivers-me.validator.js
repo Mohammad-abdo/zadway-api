@@ -59,3 +59,10 @@ export const driverOfferSchema = z.object({
     offeredPrice: z.coerce.number().nonnegative().optional().nullable(),
   }),
 });
+
+export const driverOrderStatusSchema = z.object({
+  params: z.object({ orderId: z.coerce.number().int().positive() }),
+  body: z.object({
+    status: z.enum(["PICKED_UP", "ON_THE_WAY", "DELIVERED"]),
+  }),
+});
