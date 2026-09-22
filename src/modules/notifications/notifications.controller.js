@@ -1,6 +1,7 @@
 import * as service from "./notifications.service.js";
 import { successResponse, paginatedResponse, errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
+import { userHasAnyPermission } from "../../core/utils/staffPermissions.js";
 
 export async function list(req, res) {
   try {
@@ -49,17 +50,18 @@ export async function remove(req, res) {
   }
 }
 
-function canAccessNotification(req, row) {
+async function canAccessNotification(req, row) {
   if (!row) return false;
-  if (req.user.userType === "admin") return true;
   if (row.notifiableType === "User" && row.notifiableId === req.user.id) return true;
-  return false;
+  // Fall back to real RBAC (role-granted permission), never the
+  // self-reported/self-registerable `userType` field.
+  return userHasAnyPermission(req.user.id, req.user.userType, ["notifications.manage"]);
 }
 
 export async function markRead(req, res) {
   try {
     const row = await service.getById(req.params.id);
-    if (!row || !canAccessNotification(req, row)) {
+    if (!row || !(await canAccessNotification(req, row))) {
       return errorResponse(res, t("db.not_found", req.locale), 404);
     }
     const updated = await service.markRead(req.params.id);

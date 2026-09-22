@@ -54,7 +54,7 @@ export async function approve(req, res) {
     const row = await service.approve(req.params.id);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }
 
@@ -63,6 +63,6 @@ export async function reject(req, res) {
     const row = await service.reject(req.params.id);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }

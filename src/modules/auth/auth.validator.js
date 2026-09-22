@@ -15,6 +15,11 @@ export const loginSchema = z.object({
     .refine(hasLoginId, { message: "email or phone required" }),
 });
 
+// Self-service registration may only ever create the two public app roles.
+// Admin/staff accounts must be created through the admin-managed /users
+// endpoint (requires users.manage), never through a public/unauthenticated route.
+export const SELF_REGISTERABLE_USER_TYPES = ["rider", "driver"];
+
 export const registerSchema = z.object({
   body: z
     .object({
@@ -22,7 +27,7 @@ export const registerSchema = z.object({
       phone: z.union([z.string(), z.number()]).optional(),
       password: z.string().min(6),
       name: z.string().optional(),
-      userType: z.string().optional(),
+      userType: z.enum(SELF_REGISTERABLE_USER_TYPES).optional(),
     })
     .refine(hasLoginId, { message: "email or phone required" }),
 });
@@ -35,7 +40,7 @@ export const publicRegisterSchema = z.object({
       phone: z.union([z.string(), z.number()]),
       password: z.string().min(6).optional(),
       paddword: z.string().min(6).optional(),
-      role: z.string().optional(),
+      role: z.enum(SELF_REGISTERABLE_USER_TYPES).optional(),
       avatar: z.string().optional(),
     })
     .refine((b) => Boolean(b.password || b.paddword), { message: "password required" }),

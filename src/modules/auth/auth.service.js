@@ -2,6 +2,14 @@ import bcrypt from "bcryptjs";
 import prisma from "../../config/prisma.js";
 import { generateToken, generateAuthTokens } from "../../core/utils/jwtHelper.js";
 import { getDashboardPermissionPayload } from "../../core/utils/staffPermissions.js";
+import { SELF_REGISTERABLE_USER_TYPES } from "./auth.validator.js";
+
+// Defense-in-depth: even if a caller bypasses the route-level zod validator,
+// self-service registration must never be able to mint an admin/staff account.
+function clampSelfRegisterableUserType(value) {
+  const normalized = String(value || "rider").toLowerCase();
+  return SELF_REGISTERABLE_USER_TYPES.includes(normalized) ? normalized : "rider";
+}
 
 function parsePhone(phone) {
   if (phone === undefined || phone === null || phone === "") return null;
@@ -98,7 +106,7 @@ export async function register(body) {
     email: email ? String(email).trim() : null,
     password: hashed,
     name: name ?? null,
-    userType: userType ?? "rider",
+    userType: clampSelfRegisterableUserType(userType),
     status: "active",
     phone: p,
   };
@@ -199,7 +207,7 @@ export async function publicRegister(body) {
     throw e;
   }
 
-  const userType = String(role || "USER").toLowerCase();
+  const userType = clampSelfRegisterableUserType(role);
   const hashed = await bcrypt.hash(String(plainPassword), 10);
   const user = await prisma.user.create({
     data: {

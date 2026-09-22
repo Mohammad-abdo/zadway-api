@@ -15,11 +15,18 @@ export const listQuerySchema = z.object({
     .passthrough(),
 });
 
+const guestCustomerFields = {
+  name: z.string().trim().min(1).optional().nullable(),
+  phone: z.string().trim().min(1).optional().nullable(),
+};
+
 export const createSchema = z.object({
-  body: z.object({}).passthrough(),
+  body: z
+    .object(guestCustomerFields)
+    .refine((b) => Boolean(b.name || b.phone), { message: "name or phone required" }),
 });
 
 export const updateSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
-  body: z.object({}).passthrough(),
+  body: z.object(guestCustomerFields),
 });

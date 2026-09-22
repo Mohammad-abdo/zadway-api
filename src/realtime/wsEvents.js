@@ -10,7 +10,8 @@
  * | `product_order_location_update.*` | Broadcast | Admin Tracking |
  * | `booking_location_update.*` | Broadcast | Admin Tracking |
  */
-import { broadcast, emitToAdmins, emitToUsers } from "./wsHub.js";
+import prisma from "../config/prisma.js";
+import { emitToAdmins, emitToUsers } from "./wsHub.js";
 
 /** @typedef {import("@prisma/client").ProductOrderStatus} ProductOrderStatus */
 
@@ -106,12 +107,39 @@ export function emitOrderStatusChanged(payload) {
 }
 
 /**
+ * Find the rider currently on this driver's active delivery, if any, so a
+ * live-location event can be targeted to them in addition to admins/self.
+ * @param {number} driverId
+ * @returns {Promise<number|null>}
+ */
+async function findActiveOrderRiderIdForDriver(driverId) {
+  try {
+    const order = await prisma.productOrder.findFirst({
+      where: {
+        driverId,
+        status: { in: ["ACCEPTED", "PICKED_UP", "ON_THE_WAY"] },
+        riderUserId: { not: null },
+      },
+      select: { riderUserId: true },
+      orderBy: { assignedAt: "desc" },
+    });
+    return order?.riderUserId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Driver GPS update (`PATCH /drivers/me/location`).
+ * Targeted delivery only (admins + the driver + the rider on their active
+ * order, if any) — never a global broadcast, which would leak every driver's
+ * live location to every connected client.
  * @param {{ driverId: number, lat: number, lng: number, updatedAt?: Date|string|null, heading?: number|null }} payload
  */
-export function emitDriverLocationUpdated(payload) {
+export async function emitDriverLocationUpdated(payload) {
+  const driverId = Number(payload.driverId);
   const body = {
-    driverId: Number(payload.driverId),
+    driverId,
     lat: Number(payload.lat),
     lng: Number(payload.lng),
     updatedAt: toIso(payload.updatedAt) ?? new Date().toISOString(),
@@ -119,35 +147,78 @@ export function emitDriverLocationUpdated(payload) {
       ? { heading: Number(payload.heading) }
       : {}),
   };
-  broadcast(WS_EVENTS.DRIVER_LOCATION_UPDATED, body);
+  emitToAdmins(WS_EVENTS.DRIVER_LOCATION_UPDATED, body);
+  const riderId = await findActiveOrderRiderIdForDriver(driverId);
+  const recipients = riderId != null ? [driverId, riderId] : [driverId];
+  emitToUsers(recipients, WS_EVENTS.DRIVER_LOCATION_UPDATED, body);
 }
 
 /**
- * @param {unknown} row
+ * Resolve the stakeholder user ids (driver + rider) for a product order.
+ * @param {number|null|undefined} orderId
+ * @param {number|null|undefined} rowDriverId
+ * @returns {Promise<number[]>}
+ */
+async function findProductOrderStakeholderIds(orderId, rowDriverId) {
+  const ids = new Set();
+  if (rowDriverId != null) ids.add(Number(rowDriverId));
+  if (orderId != null) {
+    try {
+      const order = await prisma.productOrder.findUnique({
+        where: { id: Number(orderId) },
+        select: { driverId: true, riderUserId: true },
+      });
+      if (order?.driverId != null) ids.add(Number(order.driverId));
+      if (order?.riderUserId != null) ids.add(Number(order.riderUserId));
+    } catch {
+      // best-effort enrichment only
+    }
+  }
+  return Array.from(ids);
+}
+
+/**
+ * Targeted delivery only (admins + the order's driver/rider) — a product
+ * order's location trail is customer-sensitive data and must not reach every
+ * connected client.
+ * @param {string} event
+ * @param {{ orderId?: number, driverId?: number }} row
+ */
+async function notifyProductOrderLocation(event, row) {
+  emitToAdmins(event, row);
+  const stakeholders = await findProductOrderStakeholderIds(row?.orderId, row?.driverId);
+  if (stakeholders.length) emitToUsers(stakeholders, event, row);
+}
+
+/**
+ * @param {{ orderId?: number, driverId?: number }} row
  */
 export function broadcastProductOrderLocationCreated(row) {
-  broadcast(WS_EVENTS.PRODUCT_ORDER_LOCATION_UPDATE_CREATED, row);
+  return notifyProductOrderLocation(WS_EVENTS.PRODUCT_ORDER_LOCATION_UPDATE_CREATED, row);
 }
 
 /**
- * @param {unknown} row
+ * @param {{ orderId?: number, driverId?: number }} row
  */
 export function broadcastProductOrderLocationUpdated(row) {
-  broadcast(WS_EVENTS.PRODUCT_ORDER_LOCATION_UPDATE_UPDATED, row);
+  return notifyProductOrderLocation(WS_EVENTS.PRODUCT_ORDER_LOCATION_UPDATE_UPDATED, row);
 }
 
 /**
+ * Booking has no owning-user relation in the current schema (legacy table,
+ * no `Booking` model) — restrict to admins only rather than leaking every
+ * booking's location trail to every connected client via a global broadcast.
  * @param {unknown} row
  */
 export function broadcastBookingLocationCreated(row) {
-  broadcast(WS_EVENTS.BOOKING_LOCATION_UPDATE_CREATED, row);
+  emitToAdmins(WS_EVENTS.BOOKING_LOCATION_UPDATE_CREATED, row);
 }
 
 /**
  * @param {unknown} row
  */
 export function broadcastBookingLocationUpdated(row) {
-  broadcast(WS_EVENTS.BOOKING_LOCATION_UPDATE_UPDATED, row);
+  emitToAdmins(WS_EVENTS.BOOKING_LOCATION_UPDATE_UPDATED, row);
 }
 
 /**

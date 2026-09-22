@@ -338,9 +338,10 @@ export async function assignDriver(orderId, driverId) {
 }
 
 export async function acceptOffer(orderId, offerId) {
+  const oid = Number(orderId);
   return prisma.$transaction(async (tx) => {
     const offer = await tx.productOrderOffer.findFirst({
-      where: { id: Number(offerId), orderId: Number(orderId) },
+      where: { id: Number(offerId), orderId: oid },
     });
     if (!offer) {
       const e = new Error("offer not found");
@@ -348,10 +349,7 @@ export async function acceptOffer(orderId, offerId) {
       throw e;
     }
 
-    const order = await tx.productOrder.findUnique({
-      where: { id: Number(orderId) },
-      include: { items: true },
-    });
+    const order = await tx.productOrder.findUnique({ where: { id: oid } });
     if (!order) {
       const e = new Error("order not found");
       e.statusCode = 404;
@@ -362,7 +360,26 @@ export async function acceptOffer(orderId, offerId) {
       e.statusCode = 400;
       throw e;
     }
-    if (order.status === "ACCEPTED" && order.driverId != null && order.driverId !== offer.driverId) {
+
+    const oldStatus = order.status;
+
+    // Atomic guard: this UPDATE...WHERE only matches (and succeeds) if the
+    // order is still unassigned or already assigned to this same driver,
+    // closing the race window where two concurrent offer-accepts on the same
+    // order could otherwise both pass a plain read-then-write status check.
+    const claimed = await tx.productOrder.updateMany({
+      where: {
+        id: oid,
+        OR: [{ driverId: null }, { driverId: offer.driverId }],
+        status: { notIn: ["DELIVERED", "CANCELLED"] },
+      },
+      data: {
+        driverId: offer.driverId,
+        status: "ACCEPTED",
+        assignedAt: new Date(),
+      },
+    });
+    if (claimed.count === 0) {
       const e = new Error("Order is already assigned to another driver.");
       e.statusCode = 409;
       throw e;
@@ -370,7 +387,7 @@ export async function acceptOffer(orderId, offerId) {
 
     await tx.productOrderOffer.updateMany({
       where: {
-        orderId: Number(orderId),
+        orderId: oid,
         status: "PENDING",
         id: { not: offer.id },
       },
@@ -382,14 +399,8 @@ export async function acceptOffer(orderId, offerId) {
       data: { status: "ACCEPTED" },
     });
 
-    const oldStatus = order.status;
-    const updated = await tx.productOrder.update({
-      where: { id: Number(orderId) },
-      data: {
-        driverId: offer.driverId,
-        status: "ACCEPTED",
-        assignedAt: new Date(),
-      },
+    const updated = await tx.productOrder.findUnique({
+      where: { id: oid },
       include: { items: true, guest: true, driver: { select: { id: true, name: true, phone: true } } },
     });
     notifyOrderStatusChanged(updated, oldStatus);

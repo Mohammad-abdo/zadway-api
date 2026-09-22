@@ -20,6 +20,11 @@ export async function adjustByUserId(userId, deltaAmount, opts = {}) {
       throw e;
     }
     const newBal = w.balance + deltaAmount;
+    if (newBal < 0) {
+      const e = new Error("insufficient wallet balance");
+      e.statusCode = 400;
+      throw e;
+    }
     await tx.wallet.update({ where: { id: w.id }, data: { balance: newBal } });
     await tx.walletHistory.create({
       data: {

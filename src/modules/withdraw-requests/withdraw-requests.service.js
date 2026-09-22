@@ -33,15 +33,70 @@ export const remove = (id) => svc.remove(id);
 
 /** status codes: 0 pending, 1 approved, 2 rejected (convention) */
 export async function approve(id) {
-  return prisma.withdrawRequest.update({
-    where: { id: Number(id) },
-    data: { status: 1 },
+  const wrId = Number(id);
+  return prisma.$transaction(async (tx) => {
+    const wr = await tx.withdrawRequest.findUnique({ where: { id: wrId } });
+    if (!wr) {
+      const e = new Error("withdraw request not found");
+      e.statusCode = 404;
+      throw e;
+    }
+    if (wr.status !== 0) {
+      const e = new Error("withdraw request has already been processed");
+      e.statusCode = 409;
+      throw e;
+    }
+
+    const wallet = await tx.wallet.findUnique({ where: { userId: wr.userId } });
+    if (!wallet) {
+      const e = new Error("wallet not found");
+      e.statusCode = 404;
+      throw e;
+    }
+    if (wallet.balance < wr.amount) {
+      const e = new Error("insufficient wallet balance for this withdraw request");
+      e.statusCode = 400;
+      throw e;
+    }
+
+    const newBalance = wallet.balance - wr.amount;
+    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } });
+    await tx.walletHistory.create({
+      data: {
+        walletId: wallet.id,
+        userId: wr.userId,
+        type: "debit",
+        amount: wr.amount,
+        balance: newBalance,
+        description: `Withdraw request #${wr.id} approved`,
+        transactionType: "withdraw",
+      },
+    });
+
+    return tx.withdrawRequest.update({
+      where: { id: wrId },
+      data: { status: 1 },
+    });
   });
 }
 
 export async function reject(id) {
-  return prisma.withdrawRequest.update({
-    where: { id: Number(id) },
-    data: { status: 2 },
+  const wrId = Number(id);
+  return prisma.$transaction(async (tx) => {
+    const wr = await tx.withdrawRequest.findUnique({ where: { id: wrId } });
+    if (!wr) {
+      const e = new Error("withdraw request not found");
+      e.statusCode = 404;
+      throw e;
+    }
+    if (wr.status !== 0) {
+      const e = new Error("withdraw request has already been processed");
+      e.statusCode = 409;
+      throw e;
+    }
+    return tx.withdrawRequest.update({
+      where: { id: wrId },
+      data: { status: 2 },
+    });
   });
 }

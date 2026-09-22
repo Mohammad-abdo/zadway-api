@@ -15,11 +15,21 @@ export const listQuerySchema = z.object({
     .passthrough(),
 });
 
+const documentFields = {
+  name: z.string().trim().min(1),
+  nameAr: z.string().trim().optional().nullable(),
+  nameI18n: z.record(z.string()).optional().nullable(),
+  type: z.string().trim().optional().nullable(),
+  status: z.coerce.number().int().optional(),
+  isRequired: z.coerce.boolean().optional(),
+  hasExpiryDate: z.coerce.boolean().optional(),
+};
+
 export const createSchema = z.object({
-  body: z.object({}).passthrough(),
+  body: z.object(documentFields),
 });
 
 export const updateSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
-  body: z.object({}).passthrough(),
+  body: z.object(documentFields).partial(),
 });

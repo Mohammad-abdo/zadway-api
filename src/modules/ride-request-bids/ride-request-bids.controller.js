@@ -54,6 +54,6 @@ export async function acceptBid(req, res) {
     const row = await service.acceptBid(req.params.id);
     return successResponse(res, row, t("common.updated", req.locale));
   } catch (e) {
-    return errorResponse(res, e.message, 500);
+    return errorResponse(res, e.message, e.statusCode || 500);
   }
 }

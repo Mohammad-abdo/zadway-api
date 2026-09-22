@@ -12,11 +12,33 @@ function parseToken(req) {
   }
 }
 
+function safeSend(socket, payload) {
+  if (socket.readyState !== socket.OPEN) return;
+  try {
+    socket.send(payload);
+  } catch {
+    // Connection dropped between the readyState check and send() — ignore,
+    // the socket's own "close"/"error" handlers will clean up registration.
+  }
+}
+
 export function initWsServer(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
   setWsServer(wss);
 
+  // Without this handler, an 'error' event on the server itself would be an
+  // unhandled EventEmitter error and crash the whole Node process.
+  wss.on("error", () => {
+    // ignore — per-connection errors are handled via each socket's own
+    // "error" listener registered below.
+  });
+
   wss.on("connection", async (socket, req) => {
+    socket.on("error", () => {
+      // Prevent an unhandled 'error' event on this socket (e.g. an abrupt
+      // TCP reset) from crashing the process.
+    });
+
     const token = parseToken(req);
     if (!token) {
       socket.close(1008, "Missing token");
@@ -43,7 +65,8 @@ export function initWsServer(httpServer) {
 
     registerUserSocket(socket, socket.userId);
 
-    socket.send(
+    safeSend(
+      socket,
       JSON.stringify({
         event: "connected",
         payload: { ok: true, userId: socket.userId, userType: socket.userType },
@@ -55,7 +78,7 @@ export function initWsServer(httpServer) {
       try {
         const msg = JSON.parse(raw.toString());
         if (msg?.event === "ping") {
-          socket.send(JSON.stringify({ event: "pong", ts: Date.now() }));
+          safeSend(socket, JSON.stringify({ event: "pong", ts: Date.now() }));
         }
       } catch {
         // ignore

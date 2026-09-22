@@ -16,12 +16,22 @@ export const listQuerySchema = z.object({
 });
 
 export const createSchema = z.object({
-  body: z.object({}).passthrough(),
+  body: z.object({
+    userId: z.coerce.number().int().positive(),
+    balance: z.coerce.number().optional(),
+    currency: z.string().trim().min(1).optional(),
+  }),
 });
 
+// Deliberately excludes `balance`: balance changes must always go through
+// POST /wallets/user/:userId/credit|debit so a WalletHistory ledger row is
+// written alongside the update. A generic PATCH must never be able to move
+// money silently.
 export const updateSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
-  body: z.object({}).passthrough(),
+  body: z.object({
+    currency: z.string().trim().min(1).optional(),
+  }),
 });
 
 export const userAmountSchema = z.object({
