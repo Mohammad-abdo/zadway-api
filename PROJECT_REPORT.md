@@ -342,6 +342,7 @@ GOOGLE_MAPS_API_KEY=...   # اختياري
 | GET | `/api/drivers/me/product-orders/:orderId` | تفاصيل طلب |
 | POST | `/api/drivers/me/product-orders/:orderId/offers` | تقديم/تحديث عرض سعر |
 | POST | `/api/drivers/me/product-orders/:orderId/claim` | المطالبة بالطلب |
+| PATCH | `/api/drivers/me/product-orders/:orderId/status` | تقدم حالة التوصيل (`PICKED_UP` / `ON_THE_WAY` / `DELIVERED`) |
 
 ---
 

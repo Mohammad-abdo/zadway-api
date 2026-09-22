@@ -231,6 +231,19 @@
             "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}/claim"
           }
+        },
+        {
+          "name": "PATCH Driver order status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"PICKED_UP\"\n}" },
+            "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}/status",
+            "description": "Allowed: PICKED_UP | ON_THE_WAY | DELIVERED"
+          }
         }
       ]
     },
