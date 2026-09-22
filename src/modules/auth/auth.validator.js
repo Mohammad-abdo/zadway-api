@@ -45,3 +45,22 @@ export const publicRegisterSchema = z.object({
     })
     .refine((b) => Boolean(b.password || b.paddword), { message: "password required" }),
 });
+
+export const updateMeSchema = z.object({
+  body: z
+    .object({
+      name: z.string().min(1).optional(),
+      displayName: z.string().min(1).optional(),
+      avatar: z.string().optional(),
+    })
+    .refine((b) => b.name !== undefined || b.displayName !== undefined || b.avatar !== undefined, {
+      message: "no fields to update",
+    }),
+});
+
+export const changePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(6),
+  }),
+});

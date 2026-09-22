@@ -48,3 +48,13 @@ export async function remove(req, res) {
     return errorResponse(res, e.message, 500);
   }
 }
+
+export async function getBySlug(req, res) {
+  try {
+    const row = await service.getBySlug(req.params.slug);
+    if (!row) return errorResponse(res, t("db.not_found", req.locale), 404);
+    return successResponse(res, row, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}

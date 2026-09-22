@@ -495,7 +495,7 @@ async function main() {
       {
         userId: ru.id,
         title: "Home",
-        address: `Riyadh — test address #${i + 1}`,
+        address: i === 0 ? "بغداد، المنصور - حي دراغ" : `بغداد — عنوان تجريبي #${i + 1}`,
         latitude: riders[i].lat,
         longitude: riders[i].lng,
         isDefault: true,
@@ -965,16 +965,82 @@ async function main() {
 
   await prisma.pages.upsert({
     where: { slug: "about" },
-    update: { status: 1 },
+    update: {
+      status: 1,
+      title: "About",
+      titleAr: "عن زادواي",
+      titleI18n: { en: "About", ar: "عن زادواي" },
+      description: "Zadway delivers purified drinking water across Baghdad.",
+      descriptionAr:
+        "زادواي منصة توصيل مياه الشرب النقية في بغداد. نوفر قوارير وكراتين معتمدة مع تتبع مباشر للطلب والدفع عند الاستلام.",
+      descriptionI18n: {
+        en: "Zadway delivers purified drinking water across Baghdad.",
+        ar: "زادواي منصة توصيل مياه الشرب النقية في بغداد. نوفر قوارير وكراتين معتمدة مع تتبع مباشر للطلب والدفع عند الاستلام.",
+      },
+    },
     create: {
       slug: "about",
       title: "About",
-      titleI18n: { en: "About", ar: "عن التطبيق" },
-      description: "Seed about page",
-      descriptionI18n: { en: "Seed about page", ar: "صفحة تعريف تجريبية" },
+      titleAr: "عن زادواي",
+      titleI18n: { en: "About", ar: "عن زادواي" },
+      description: "Zadway delivers purified drinking water across Baghdad.",
+      descriptionAr:
+        "زادواي منصة توصيل مياه الشرب النقية في بغداد. نوفر قوارير وكراتين معتمدة مع تتبع مباشر للطلب والدفع عند الاستلام.",
+      descriptionI18n: {
+        en: "Zadway delivers purified drinking water across Baghdad.",
+        ar: "زادواي منصة توصيل مياه الشرب النقية في بغداد. نوفر قوارير وكراتين معتمدة مع تتبع مباشر للطلب والدفع عند الاستلام.",
+      },
       status: 1,
     },
   });
+
+  const cmsPages = [
+    {
+      slug: "privacy",
+      title: "Privacy Policy",
+      titleAr: "سياسة الخصوصية وحماية البيانات",
+      descriptionAr:
+        "نحترم خصوصيتك. نجمع بيانات الحساب والطلب والموقع فقط لتقديم خدمة التوصيل وتحسين التجربة. لا نبيع بياناتك لأطراف ثالثة. يمكنك طلب حذف الحساب عبر الإعدادات أو الدعم.",
+    },
+    {
+      slug: "terms",
+      title: "Terms of Service",
+      titleAr: "شروط وأحكام منصة زادواي",
+      descriptionAr:
+        "باستخدامك لتطبيق زادواي فأنت توافق على طلب المياه عبر المنصة والدفع نقداً عند الاستلام. الأسعار تشمل الضريبة ما لم يُذكر خلاف ذلك. يحق للسائق رفض الطلب في حال تعذر الوصول أو نفاد المخزون.",
+    },
+    {
+      slug: "quality",
+      title: "Quality Certificates",
+      titleAr: "شهادات الجودة وفحص العينات",
+      descriptionAr:
+        "تخضع مصادر مياه زادواي لفحوصات ميكروبيولوجية وكيميائية دورية وفق المواصفة العراقية 417. نوفر تقارير مختبرية معتمدة لسلسلة التوريد عند الطلب عبر الدعم.",
+    },
+  ];
+  for (const p of cmsPages) {
+    await prisma.pages.upsert({
+      where: { slug: p.slug },
+      update: {
+        status: 1,
+        title: p.title,
+        titleAr: p.titleAr,
+        titleI18n: { en: p.title, ar: p.titleAr },
+        description: p.descriptionAr,
+        descriptionAr: p.descriptionAr,
+        descriptionI18n: { en: p.descriptionAr, ar: p.descriptionAr },
+      },
+      create: {
+        slug: p.slug,
+        title: p.title,
+        titleAr: p.titleAr,
+        titleI18n: { en: p.title, ar: p.titleAr },
+        description: p.descriptionAr,
+        descriptionAr: p.descriptionAr,
+        descriptionI18n: { en: p.descriptionAr, ar: p.descriptionAr },
+        status: 1,
+      },
+    });
+  }
 
   // ---- Admin login tracking ----
   await prisma.adminLoginDevice.create({

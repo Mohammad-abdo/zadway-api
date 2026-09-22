@@ -44,6 +44,15 @@ export async function updateMe(req, res) {
   }
 }
 
+export async function changePassword(req, res) {
+  try {
+    const result = await service.changePassword(req.user.id, req.body);
+    return successResponse(res, result, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message || t("common.error", req.locale), e.statusCode || 400);
+  }
+}
+
 export async function uploadAvatar(req, res) {
   const locale = req.locale ?? "ar";
   try {

@@ -7,7 +7,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, "../../postman");
+const OUT = join(__dirname, "../postman");
 
 mkdirSync(OUT, { recursive: true });
 
@@ -286,6 +286,25 @@ Use environment variable \`base_url\`:
           ],
           examples: [example("200 Success", 200, meSuccess), example("401 Unauthorized", 401, { ...ERROR, message: "Unauthorized" })],
         }),
+        req("Update Me (Profile)", {
+          method: "PATCH",
+          path: "/auth/me",
+          auth: true,
+          body: jsonBody({ name: "محمد عبدو", displayName: "محمد عبدو" }),
+          testScript: standardGetTests,
+          examples: [example("200 Success", 200, meSuccess), example("400 No fields", 400, { ...ERROR, message: "no fields to update" })],
+        }),
+        req("Change Password", {
+          method: "POST",
+          path: "/auth/me/password",
+          auth: true,
+          body: jsonBody({ currentPassword: "password", newPassword: "password123" }),
+          testScript: standardGetTests,
+          examples: [
+            example("200 Success", 200, { ...SUCCESS, data: { changed: true } }),
+            example("401 Wrong password", 401, { ...ERROR, message: "current password is incorrect" }),
+          ],
+        }),
         {
           name: "Edge Cases",
           item: [
@@ -368,6 +387,19 @@ Use environment variable \`base_url\`:
           ],
           examples: [example("200 Success", 200, { ...SUCCESS, data: [{ id: 1, title: "Promo", isActive: true }] })],
         }),
+        req("Get CMS Page (Public)", {
+          method: "GET",
+          path: "/pages/public/{{page_slug}}",
+          description: "Public privacy / terms / quality pages. Set `page_slug` to privacy|terms|quality.",
+          testScript: standardGetTests,
+          examples: [
+            example("200 Success", 200, {
+              ...SUCCESS,
+              data: { id: 1, slug: "privacy", titleAr: "سياسة الخصوصية", descriptionAr: "..." },
+            }),
+            example("404 Not found", 404, { ...ERROR, message: "not found" }),
+          ],
+        }),
         {
           name: "Edge Cases",
           item: [
@@ -382,6 +414,74 @@ Use environment variable \`base_url\`:
             }),
           ],
         },
+      ],
+    },
+    {
+      name: "Account",
+      item: [
+        req("List My Addresses", {
+          method: "GET",
+          path: "/user-addresses/me",
+          auth: true,
+          testScript: [
+            ...standardGetTests,
+            "const res = pm.response.json();",
+            "if (Array.isArray(res.data) && res.data[0]?.id) pm.environment.set('address_id', String(res.data[0].id));",
+          ],
+          examples: [example("200 Success", 200, { ...SUCCESS, data: [{ id: 1, title: "المنزل", address: "بغداد" }] })],
+        }),
+        req("Create My Address", {
+          method: "POST",
+          path: "/user-addresses/me",
+          auth: true,
+          body: jsonBody({
+            title: "المنزل",
+            address: "بغداد، المنصور",
+            latitude: "33.3152",
+            longitude: "44.3661",
+            isDefault: true,
+          }),
+          testScript: [
+            ...standardPostTests,
+            "const res = pm.response.json();",
+            "if (res.data?.id) pm.environment.set('address_id', String(res.data.id));",
+          ],
+          examples: [example("201 Created", 201, { ...SUCCESS, data: { id: 1, title: "المنزل" } })],
+        }),
+        req("Update My Address", {
+          method: "PATCH",
+          path: "/user-addresses/me/{{address_id}}",
+          auth: true,
+          body: jsonBody({ title: "العمل", address: "بغداد، الكرادة", isDefault: false }),
+          testScript: standardGetTests,
+          examples: [example("200 Success", 200, { ...SUCCESS, data: { id: 1, title: "العمل" } })],
+        }),
+        req("Delete My Address", {
+          method: "DELETE",
+          path: "/user-addresses/me/{{address_id}}",
+          auth: true,
+          testScript: standardGetTests,
+          examples: [example("200 Success", 200, SUCCESS)],
+        }),
+        req("List My Support Tickets", {
+          method: "GET",
+          path: "/customer-supports/me",
+          auth: true,
+          testScript: standardGetTests,
+          examples: [example("200 Success", 200, { ...SUCCESS, data: [{ id: 1, status: "open", message: "..." }] })],
+        }),
+        req("Create Support Ticket", {
+          method: "POST",
+          path: "/customer-supports/me",
+          auth: true,
+          body: jsonBody({ message: "تأخر السائق عن الموعد", supportType: "طلب نشط" }),
+          testScript: [
+            ...standardPostTests,
+            "const res = pm.response.json();",
+            "if (res.data?.id) pm.environment.set('support_id', String(res.data.id));",
+          ],
+          examples: [example("201 Created", 201, { ...SUCCESS, data: { id: 1, status: "open" } })],
+        }),
       ],
     },
     {
@@ -625,6 +725,21 @@ Use environment variable \`base_url\`:
     {
       name: "Notifications",
       item: [
+        req("List My Notifications", {
+          method: "GET",
+          path: "/notifications/mine",
+          auth: true,
+          query: [
+            { key: "page", value: "{{page}}" },
+            { key: "limit", value: "{{limit}}" },
+          ],
+          testScript: [
+            ...standardGetTests,
+            "const res = pm.response.json();",
+            "if (Array.isArray(res.data) && res.data[0]?.id) pm.environment.set('notification_id', String(res.data[0].id));",
+          ],
+          examples: [example("200 Success", 200, { ...SUCCESS, data: [{ id: 1, title: "طلبك جاهز", isRead: false }] })],
+        }),
         req("Mark All Notifications Read", {
           method: "POST",
           path: "/notifications/read-all",
@@ -681,6 +796,9 @@ const devEnv = {
     { key: "order_access_token", value: "", type: "secret", enabled: true },
     { key: "inventory_id", value: "", type: "default", enabled: true },
     { key: "notification_id", value: "1", type: "default", enabled: true },
+    { key: "address_id", value: "1", type: "default", enabled: true },
+    { key: "support_id", value: "1", type: "default", enabled: true },
+    { key: "page_slug", value: "privacy", type: "default", enabled: true },
   ],
   _postman_variable_scope: "environment",
   _postman_exported_at: new Date().toISOString(),

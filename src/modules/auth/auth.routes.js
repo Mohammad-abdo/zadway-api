@@ -25,7 +25,8 @@ function wrapMulter(mw) {
 r.post("/login", validate(v.loginSchema), ctrl.login);
 r.post("/register", validate(v.registerSchema), ctrl.register);
 r.get("/me", authenticate, ctrl.me);
-r.patch("/me", authenticate, ctrl.updateMe);
+r.patch("/me", authenticate, validate(v.updateMeSchema), ctrl.updateMe);
+r.post("/me/password", authenticate, validate(v.changePasswordSchema), ctrl.changePassword);
 r.post("/me/avatar", authenticate, wrapMulter(avatarUpload.single("file")), ctrl.uploadAvatar);
 
 export default r;

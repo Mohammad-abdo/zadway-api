@@ -172,6 +172,42 @@ export async function updateMe(userId, body) {
   return user;
 }
 
+export async function changePassword(userId, body) {
+  const currentPassword = String(body?.currentPassword ?? "").trim();
+  const newPassword = String(body?.newPassword ?? "").trim();
+  if (!currentPassword || !newPassword) {
+    const e = new Error("currentPassword and newPassword required");
+    e.statusCode = 400;
+    throw e;
+  }
+  if (newPassword.length < 6) {
+    const e = new Error("newPassword must be at least 6 characters");
+    e.statusCode = 400;
+    throw e;
+  }
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, password: true },
+  });
+  if (!user?.password) {
+    const e = new Error("account has no password");
+    e.statusCode = 400;
+    throw e;
+  }
+  const ok = await bcrypt.compare(currentPassword, user.password);
+  if (!ok) {
+    const e = new Error("current password is incorrect");
+    e.statusCode = 401;
+    throw e;
+  }
+  const hashed = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: hashed },
+  });
+  return { changed: true };
+}
+
 export async function publicRegister(body) {
   const { name, email, phone, role, avatar, password, paddword } = body;
   const plainPassword = password || paddword;
