@@ -240,7 +240,7 @@
           ]
         },
         {
-          "name": "Register (Auth)",
+          "name": "Register Rider (Auth)",
           "request": {
             "method": "POST",
             "header": [
@@ -345,6 +345,56 @@
               "body": "{\n  \"success\": false,\n  \"message\": \"email or phone required\"\n}"
             }
           ]
+        },
+        {
+          "name": "Register Driver (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"966500000099\",\n  \"password\": \"secret12\",\n  \"name\": \"Test Driver\",\n  \"userType\": \"driver\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Create a driver (captain) account. Response token is a driver JWT for `/drivers/me/*`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect([200, 201]).to.include(pm.response.code));",
+                  "const res = pm.response.json();",
+                  "if (res.success && res.data) {",
+                  "  const token = res.data.accessToken || res.data.token;",
+                  "  if (token) pm.environment.set('token', token);",
+                  "  if (res.data.user && res.data.user.id) pm.environment.set('user_id', String(res.data.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
         },
         {
           "name": "Public Register",
