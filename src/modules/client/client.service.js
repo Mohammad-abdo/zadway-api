@@ -171,7 +171,17 @@ export async function getClientOrder(orderId, auth) {
     where: { id: Number(orderId) },
     include: {
       guest: true,
-      driver: { select: { id: true, name: true, phone: true, email: true } },
+      driver: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          latitude: true,
+          longitude: true,
+          lastLocationUpdateAt: true,
+        },
+      },
       items: {
         include: {
           variant: { include: { product: true, size: true, type: true } },
@@ -217,7 +227,16 @@ export async function listRiderOrders(riderUserId, query) {
       orderBy: parsed.orderBy,
       include: {
         guest: true,
-        driver: { select: { id: true, name: true, phone: true } },
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            latitude: true,
+            longitude: true,
+            lastLocationUpdateAt: true,
+          },
+        },
         _count: { select: { items: true } },
       },
     }),
