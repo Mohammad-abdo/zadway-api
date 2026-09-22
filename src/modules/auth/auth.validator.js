@@ -52,10 +52,18 @@ export const updateMeSchema = z.object({
       name: z.string().min(1).optional(),
       displayName: z.string().min(1).optional(),
       avatar: z.string().optional(),
+      email: z.string().email().optional().or(z.literal("")),
+      phone: z.union([z.string(), z.number()]).optional(),
     })
-    .refine((b) => b.name !== undefined || b.displayName !== undefined || b.avatar !== undefined, {
-      message: "no fields to update",
-    }),
+    .refine(
+      (b) =>
+        b.name !== undefined ||
+        b.displayName !== undefined ||
+        b.avatar !== undefined ||
+        b.email !== undefined ||
+        b.phone !== undefined,
+      { message: "no fields to update" },
+    ),
 });
 
 export const changePasswordSchema = z.object({

@@ -149,12 +149,49 @@ export async function me(userId) {
 }
 
 export async function updateMe(userId, body) {
-  // Only allow safe fields for self-update
-  const { name, displayName, avatar } = body;
+  const { name, displayName, avatar, email, phone } = body;
   const data = {};
   if (name !== undefined) data.name = String(name).trim() || null;
   if (displayName !== undefined) data.displayName = String(displayName).trim() || null;
   if (avatar !== undefined) data.avatar = avatar;
+
+  if (email !== undefined) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (normalizedEmail) {
+      const taken = await prisma.user.findFirst({
+        where: { email: normalizedEmail, NOT: { id: userId } },
+        select: { id: true },
+      });
+      if (taken) {
+        const e = new Error("email already exists");
+        e.statusCode = 409;
+        throw e;
+      }
+      data.email = normalizedEmail;
+    } else {
+      data.email = null;
+    }
+  }
+
+  if (phone !== undefined) {
+    const p = parsePhone(phone);
+    if (p == null) {
+      const e = new Error("valid phone required");
+      e.statusCode = 400;
+      throw e;
+    }
+    const taken = await prisma.user.findFirst({
+      where: { phone: p, NOT: { id: userId } },
+      select: { id: true },
+    });
+    if (taken) {
+      const e = new Error("phone already exists");
+      e.statusCode = 409;
+      throw e;
+    }
+    data.phone = p;
+    data.countryCode = parseCountryCode(phone);
+  }
 
   if (Object.keys(data).length === 0) {
     const e = new Error("no fields to update");
@@ -166,7 +203,7 @@ export async function updateMe(userId, body) {
     data,
     select: {
       id: true, name: true, email: true, phone: true,
-      userType: true, displayName: true, avatar: true,
+      userType: true, displayName: true, avatar: true, status: true,
     },
   });
   return user;
