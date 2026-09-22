@@ -2,10 +2,18 @@ import { randomBytes } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-/** Unsplash CDN — stable water / packaging photos for catalog & seed docs */
+/** Unsplash CDN — water / packaging / delivery photos for catalog & banners */
 const SEED_IMAGES = {
   categoryWater:
     "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=80",
+  categoryOffice:
+    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
+  categoryFamily:
+    "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=80",
+  categoryDispenser:
+    "https://images.unsplash.com/photo-1563906267088-b029e7101114?w=1200&q=80",
+  categorySparkling:
+    "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=80",
   productHero:
     "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200&q=80",
   productGallery: [
@@ -13,9 +21,25 @@ const SEED_IMAGES = {
     "https://images.unsplash.com/photo-1616116214959-51e0aa9b6eaf?w=1200&q=80",
     "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=80",
   ],
+  products: {
+    naturalBottle: "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200&q=80",
+    mineralSpring: "https://images.unsplash.com/photo-1559839914-17aae19cec71?w=1200&q=80",
+    alkaline: "https://images.unsplash.com/photo-1616116214959-51e0aa9b6eaf?w=1200&q=80",
+    gallon19: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=80",
+    pack12: "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=80",
+    pack24: "https://images.unsplash.com/photo-1564419320461-6870880221ad?w=1200&q=80",
+    officeCooler: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80",
+    kidsBottle: "https://images.unsplash.com/photo-1625772452859-1c03d5bf1137?w=1200&q=80",
+    sports: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&q=80",
+    sparkling: "https://images.unsplash.com/photo-1581006852262-e4307cf6283a?w=1200&q=80",
+    flavored: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=1200&q=80",
+    glass: "https://images.unsplash.com/photo-1606937295549-66c4c0c8b0c4?w=1200&q=80",
+    iceBag: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=1200&q=80",
+    tapFilter: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=1200&q=80",
+    dispenser: "https://images.unsplash.com/photo-1563906267088-b029e7101114?w=1200&q=80",
+  },
   driverLicenseSample:
     "https://images.unsplash.com/photo-1449965408869-eaa3aaf487df?w=800&q=80",
-  /** Per-size hero + galleries (distinct visuals for client variant picker). */
   waterVariantSmallHero:
     "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=80",
   waterVariantSmallGallery: [
@@ -516,43 +540,77 @@ async function main() {
     );
   }
 
-  // ---- Catalog: one water product, three sizes, real images ----
-  await removeLegacyCatalogProducts(["Seed Water", "Seed Chips", "Qarora Natural Drinking Water"]);
+  // ---- Catalog: categories + many water products with real Unsplash images ----
+  await removeLegacyCatalogProducts([
+    "Seed Water",
+    "Seed Chips",
+    "Qarora Natural Drinking Water",
+  ]);
 
-  const category = await findOrCreate(
-    prisma.category,
-    { name: "Drinking water" },
+  const categoryDefs = [
     {
       name: "Drinking water",
-      nameI18n: { en: "Drinking water", ar: "مياه الشرب" },
-      description: "Purified still bottled water — home & office delivery.",
-      descriptionI18n: {
-        en: "Purified still bottled water — home & office delivery.",
-        ar: "مياه معبأة نقية للشرب — توصيل منزلي ومكتبي.",
-      },
-      image_url: SEED_IMAGES.categoryWater,
+      ar: "مياه الشرب",
+      desc: "Purified still bottled water — home & office delivery.",
+      descAr: "مياه معبأة نقية للشرب — توصيل منزلي ومكتبي.",
+      image: SEED_IMAGES.categoryWater,
     },
-  );
-
-  const gallery = [SEED_IMAGES.productHero, ...SEED_IMAGES.productGallery];
-  const product = await findOrCreate(
-    prisma.product,
-    { name: "Qarora Natural Drinking Water" },
     {
-      name: "Qarora Natural Drinking Water",
-      nameI18n: { en: "Qarora Natural Drinking Water", ar: "مياه قرورة الطبيعية" },
-      description:
-        "18.9L and single-serve options. Minerals balanced for daily hydration. Sealed caps, batch traceability, and cold-chain friendly storage.",
-      descriptionI18n: {
-        en: "18.9L and single-serve options. Minerals balanced for daily hydration. Sealed caps, batch traceability, and cold-chain friendly storage.",
-        ar: "خيارات ١٨.٩ لتر وعبوات فردية. أملاغ متوازنة للترطيب اليومي. أغطية محكمة وتتبع دفعات وتخزين مناسب لسلسلة التبريد.",
-      },
-      categoryId: category.id,
-      imageUrl: SEED_IMAGES.productHero,
-      images: gallery,
-      isActive: true,
+      name: "Family packs",
+      ar: "كراتين عائلية",
+      desc: "Multi-packs for homes and weekly stocking.",
+      descAr: "كراتين متعددة العبوات للمنازل والتوريد الأسبوعي.",
+      image: SEED_IMAGES.categoryFamily,
     },
-  );
+    {
+      name: "Office & cooler",
+      ar: "مكاتب وبرادات",
+      desc: "Large jugs and cooler-friendly formats.",
+      descAr: "جالونات كبيرة وعبوات مناسبة للبرادات المكتبية.",
+      image: SEED_IMAGES.categoryOffice,
+    },
+    {
+      name: "Sparkling & flavored",
+      ar: "غازية ومنكّهة",
+      desc: "Sparkling and lightly flavored hydration.",
+      descAr: "مياه غازية ومنكّهة خفيفة للترطيب.",
+      image: SEED_IMAGES.categorySparkling,
+    },
+    {
+      name: "Dispensers & accessories",
+      ar: "برادات وملحقات",
+      desc: "Dispensers, taps, and water accessories.",
+      descAr: "برادات وصنابير وملحقات المياه.",
+      image: SEED_IMAGES.categoryDispenser,
+    },
+  ];
+
+  const categoriesByKey = {};
+  for (const c of categoryDefs) {
+    const row = await findOrCreate(
+      prisma.category,
+      { name: c.name },
+      {
+        name: c.name,
+        nameI18n: { en: c.name, ar: c.ar },
+        description: c.desc,
+        descriptionI18n: { en: c.desc, ar: c.descAr },
+        image_url: c.image,
+      },
+    );
+    await prisma.category.update({
+      where: { id: row.id },
+      data: {
+        nameI18n: { en: c.name, ar: c.ar },
+        description: c.desc,
+        descriptionI18n: { en: c.desc, ar: c.descAr },
+        image_url: c.image,
+      },
+    });
+    categoriesByKey[c.name] = row;
+  }
+
+  const category = categoriesByKey["Drinking water"];
 
   const sizeSmall = await prisma.size.upsert({
     where: { id: 1 },
@@ -614,83 +672,214 @@ async function main() {
     },
   });
 
-  const variantSmall = await prisma.productVariant.upsert({
-    where: { sku: "SEED-QARORA-WATER-SMALL" },
-    update: {
-      productId: product.id,
-      sizeId: sizeSmall.id,
-      typeId: productType.id,
-      price: 1.0,
-      stock: 200,
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantSmallHero,
-      images: SEED_IMAGES.waterVariantSmallGallery,
+  const productCatalog = [
+    {
+      name: "Qarora Natural Drinking Water",
+      ar: "مياه قرورة الطبيعية",
+      category: "Drinking water",
+      image: SEED_IMAGES.products.naturalBottle,
+      prices: { small: 750, medium: 1000, large: 1500 },
+      stock: { small: 220, medium: 320, large: 180 },
     },
-    create: {
-      productId: product.id,
-      sizeId: sizeSmall.id,
-      typeId: productType.id,
-      price: 1.0,
-      stock: 200,
-      sku: "SEED-QARORA-WATER-SMALL",
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantSmallHero,
-      images: SEED_IMAGES.waterVariantSmallGallery,
+    {
+      name: "Zadway Mineral Spring",
+      ar: "مياه زادواي المعدنية",
+      category: "Drinking water",
+      image: SEED_IMAGES.products.mineralSpring,
+      prices: { small: 800, medium: 1100, large: 1600 },
+      stock: { small: 180, medium: 260, large: 140 },
     },
-  });
+    {
+      name: "Zadway Alkaline Plus",
+      ar: "زادواي قلوية بلس",
+      category: "Drinking water",
+      image: SEED_IMAGES.products.alkaline,
+      prices: { small: 900, medium: 1250, large: 1800 },
+      stock: { small: 150, medium: 210, large: 120 },
+    },
+    {
+      name: "Zadway Glass Premium",
+      ar: "زادواي زجاج فاخر",
+      category: "Drinking water",
+      image: SEED_IMAGES.products.glass,
+      prices: { small: 1200, medium: 1800, large: 2500 },
+      stock: { small: 90, medium: 110, large: 70 },
+    },
+    {
+      name: "Family Pack 12×600ml",
+      ar: "كرتون عائلي ١٢×٦٠٠ مل",
+      category: "Family packs",
+      image: SEED_IMAGES.products.pack12,
+      prices: { small: 8500, medium: 9500, large: 11000 },
+      stock: { small: 80, medium: 100, large: 60 },
+    },
+    {
+      name: "Family Pack 24×330ml",
+      ar: "كرتون عائلي ٢٤×٣٣٠ مل",
+      category: "Family packs",
+      image: SEED_IMAGES.products.pack24,
+      prices: { small: 9000, medium: 10500, large: 12000 },
+      stock: { small: 70, medium: 90, large: 55 },
+    },
+    {
+      name: "Kids Fun Bottle",
+      ar: "عبوة أطفال",
+      category: "Family packs",
+      image: SEED_IMAGES.products.kidsBottle,
+      prices: { small: 600, medium: 850, large: 1200 },
+      stock: { small: 200, medium: 160, large: 100 },
+    },
+    {
+      name: "Sports Hydration 750ml",
+      ar: "مياه رياضية ٧٥٠ مل",
+      category: "Family packs",
+      image: SEED_IMAGES.products.sports,
+      prices: { small: 1000, medium: 1300, large: 1700 },
+      stock: { small: 140, medium: 170, large: 90 },
+    },
+    {
+      name: "Office Cooler Jug 18.9L",
+      ar: "جالون مكتبي ١٨.٩ لتر",
+      category: "Office & cooler",
+      image: SEED_IMAGES.products.officeCooler,
+      prices: { small: 4500, medium: 5000, large: 5500 },
+      stock: { small: 60, medium: 80, large: 50 },
+    },
+    {
+      name: "Zadway Gallon 19L",
+      ar: "جالون زادواي ١٩ لتر",
+      category: "Office & cooler",
+      image: SEED_IMAGES.products.gallon19,
+      prices: { small: 4800, medium: 5200, large: 5800 },
+      stock: { small: 55, medium: 75, large: 45 },
+    },
+    {
+      name: "Ice Bag 5kg",
+      ar: "كيس ثلج ٥ كغ",
+      category: "Office & cooler",
+      image: SEED_IMAGES.products.iceBag,
+      prices: { small: 2000, medium: 2500, large: 3000 },
+      stock: { small: 100, medium: 120, large: 80 },
+    },
+    {
+      name: "Sparkling Classic",
+      ar: "غازية كلاسيك",
+      category: "Sparkling & flavored",
+      image: SEED_IMAGES.products.sparkling,
+      prices: { small: 1000, medium: 1400, large: 1900 },
+      stock: { small: 130, medium: 160, large: 95 },
+    },
+    {
+      name: "Lemon Twist Water",
+      ar: "مياه بنكهة الليمون",
+      category: "Sparkling & flavored",
+      image: SEED_IMAGES.products.flavored,
+      prices: { small: 1100, medium: 1500, large: 2000 },
+      stock: { small: 120, medium: 140, large: 85 },
+    },
+    {
+      name: "Tabletop Dispenser",
+      ar: "براد طاولة",
+      category: "Dispensers & accessories",
+      image: SEED_IMAGES.products.dispenser,
+      prices: { small: 45000, medium: 55000, large: 65000 },
+      stock: { small: 20, medium: 25, large: 15 },
+    },
+    {
+      name: "Tap Filter Kit",
+      ar: "طقم فلتر صنبور",
+      category: "Dispensers & accessories",
+      image: SEED_IMAGES.products.tapFilter,
+      prices: { small: 18000, medium: 22000, large: 28000 },
+      stock: { small: 35, medium: 40, large: 25 },
+    },
+  ];
 
-  const variantMedium = await prisma.productVariant.upsert({
-    where: { sku: "SEED-QARORA-WATER-MEDIUM" },
-    update: {
-      productId: product.id,
-      sizeId: sizeMedium.id,
-      typeId: productType.id,
-      price: 1.5,
-      stock: 320,
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantMediumHero,
-      images: SEED_IMAGES.waterVariantMediumGallery,
-    },
-    create: {
-      productId: product.id,
-      sizeId: sizeMedium.id,
-      typeId: productType.id,
-      price: 1.5,
-      stock: 320,
-      sku: "SEED-QARORA-WATER-MEDIUM",
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantMediumHero,
-      images: SEED_IMAGES.waterVariantMediumGallery,
-    },
-  });
+  let variantMedium = null;
+  let variantSmall = null;
+  let variantLarge = null;
+  let firstProduct = null;
 
-  const variantLarge = await prisma.productVariant.upsert({
-    where: { sku: "SEED-QARORA-WATER-LARGE" },
-    update: {
-      productId: product.id,
-      sizeId: sizeLarge.id,
-      typeId: productType.id,
-      price: 2.25,
-      stock: 180,
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantLargeHero,
-      images: SEED_IMAGES.waterVariantLargeGallery,
-    },
-    create: {
-      productId: product.id,
-      sizeId: sizeLarge.id,
-      typeId: productType.id,
-      price: 2.25,
-      stock: 180,
-      sku: "SEED-QARORA-WATER-LARGE",
-      currency: "SAR",
-      imageUrl: SEED_IMAGES.waterVariantLargeHero,
-      images: SEED_IMAGES.waterVariantLargeGallery,
-    },
-  });
+  for (const item of productCatalog) {
+    const cat = categoriesByKey[item.category];
+    const gallery = [item.image, ...SEED_IMAGES.productGallery.filter((u) => u !== item.image)].slice(0, 4);
+    const product = await findOrCreate(
+      prisma.product,
+      { name: item.name },
+      {
+        name: item.name,
+        nameI18n: { en: item.name, ar: item.ar },
+        description: `${item.ar} — توصيل سريع داخل بغداد مع دفع عند الاستلام.`,
+        descriptionI18n: {
+          en: `${item.name} — fast Baghdad delivery, cash on delivery.`,
+          ar: `${item.ar} — توصيل سريع داخل بغداد مع دفع عند الاستلام.`,
+        },
+        categoryId: cat.id,
+        imageUrl: item.image,
+        images: gallery,
+        isActive: true,
+      },
+    );
+    await prisma.product.update({
+      where: { id: product.id },
+      data: {
+        nameI18n: { en: item.name, ar: item.ar },
+        descriptionI18n: {
+          en: `${item.name} — fast Baghdad delivery, cash on delivery.`,
+          ar: `${item.ar} — توصيل سريع داخل بغداد مع دفع عند الاستلام.`,
+        },
+        categoryId: cat.id,
+        imageUrl: item.image,
+        images: gallery,
+        isActive: true,
+      },
+    });
+    if (!firstProduct) firstProduct = product;
 
+    const skuBase = `SEED-${item.name.replace(/[^A-Za-z0-9]+/g, "-").toUpperCase().slice(0, 28)}`;
+    const sizeMap = [
+      { size: sizeSmall, key: "small", suffix: "SMALL", hero: SEED_IMAGES.waterVariantSmallHero, gallery: SEED_IMAGES.waterVariantSmallGallery },
+      { size: sizeMedium, key: "medium", suffix: "MEDIUM", hero: SEED_IMAGES.waterVariantMediumHero, gallery: SEED_IMAGES.waterVariantMediumGallery },
+      { size: sizeLarge, key: "large", suffix: "LARGE", hero: SEED_IMAGES.waterVariantLargeHero, gallery: SEED_IMAGES.waterVariantLargeGallery },
+    ];
+
+    for (const s of sizeMap) {
+      const sku = `${skuBase}-${s.suffix}`;
+      const row = await prisma.productVariant.upsert({
+        where: { sku },
+        update: {
+          productId: product.id,
+          sizeId: s.size.id,
+          typeId: productType.id,
+          price: item.prices[s.key],
+          stock: item.stock[s.key],
+          currency: "IQD",
+          imageUrl: item.image,
+          images: s.gallery,
+        },
+        create: {
+          productId: product.id,
+          sizeId: s.size.id,
+          typeId: productType.id,
+          price: item.prices[s.key],
+          stock: item.stock[s.key],
+          sku,
+          currency: "IQD",
+          imageUrl: item.image,
+          images: s.gallery,
+        },
+      });
+      if (item.name === "Qarora Natural Drinking Water") {
+        if (s.key === "small") variantSmall = row;
+        if (s.key === "medium") variantMedium = row;
+        if (s.key === "large") variantLarge = row;
+      }
+    }
+  }
+
+  const product = firstProduct;
   /** Default variant for sample order / inventory logs (medium bottle). */
-  const variant = variantMedium;
+  const variant = variantMedium ?? variantSmall ?? variantLarge;
 
   // ---- Home banners (public GET /banners/all) ----
   const bannerDefs = [
@@ -821,10 +1010,10 @@ async function main() {
   await prisma.productOrderItem.create({
     data: {
       orderId: order.id,
-      variantId: variant.id,
+      variantId: (variant ?? variantMedium ?? variantSmall).id,
       quantity: 1,
-      unitPrice: 1.5,
-      lineTotal: 1.5,
+      unitPrice: 1000,
+      lineTotal: 1000,
     },
   });
 
@@ -858,16 +1047,16 @@ async function main() {
   });
 
   const inventoryRows = [
-    { driverIdx: 0, v: variantSmall, qty: 12, price: 1.0 },
-    { driverIdx: 0, v: variantMedium, qty: 24, price: 1.5 },
-    { driverIdx: 0, v: variantLarge, qty: 16, price: 2.25 },
-    { driverIdx: 1, v: variantSmall, qty: 8, price: 1.0 },
-    { driverIdx: 1, v: variantMedium, qty: 10, price: 1.5 },
-    { driverIdx: 2, v: variantLarge, qty: 6, price: 2.25 },
-    { driverIdx: 3, v: variantSmall, qty: 5, price: 1.0 },
-    { driverIdx: 3, v: variantMedium, qty: 5, price: 1.5 },
-    { driverIdx: 3, v: variantLarge, qty: 5, price: 2.25 },
-  ];
+    { driverIdx: 0, v: variantSmall, qty: 12, price: 750 },
+    { driverIdx: 0, v: variantMedium, qty: 24, price: 1000 },
+    { driverIdx: 0, v: variantLarge, qty: 16, price: 1500 },
+    { driverIdx: 1, v: variantSmall, qty: 8, price: 750 },
+    { driverIdx: 1, v: variantMedium, qty: 10, price: 1000 },
+    { driverIdx: 2, v: variantLarge, qty: 6, price: 1500 },
+    { driverIdx: 3, v: variantSmall, qty: 5, price: 750 },
+    { driverIdx: 3, v: variantMedium, qty: 5, price: 1000 },
+    { driverIdx: 3, v: variantLarge, qty: 5, price: 1500 },
+  ].filter((row) => row.v);
   for (const row of inventoryRows) {
     const uid = drivers[row.driverIdx].user.id;
     await prisma.driverInventoryItem.upsert({
@@ -878,20 +1067,21 @@ async function main() {
         variantId: row.v.id,
         quantityOnHand: row.qty,
         price: row.price,
-        currency: "SAR",
+        currency: "IQD",
       },
     });
   }
 
-  await prisma.inventoryLog.create({
-    data: {
-      driverId: driver.id,
-      variantId: variant.id,
-      change: -1,
-      reason: "Seed: order delivery",
-    },
-  });
-
+  if (variant) {
+    await prisma.inventoryLog.create({
+      data: {
+        driverId: driver.id,
+        variantId: variant.id,
+        change: -1,
+        reason: "Seed: order delivery",
+      },
+    });
+  }
   const driverWallet = await prisma.wallet.findUnique({ where: { userId: driver.id } });
   if (driverWallet) {
     await prisma.walletHistory.create({

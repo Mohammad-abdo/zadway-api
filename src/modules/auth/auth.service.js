@@ -118,7 +118,7 @@ export async function register(body) {
   }
   const token = generateToken(user.id);
   const { password: _pw, ...safe } = user;
-  return { user: safe, token };
+  return { user: safe, token, accessToken: token };
 }
 
 export async function me(userId) {
