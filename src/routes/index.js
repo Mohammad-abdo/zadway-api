@@ -34,6 +34,8 @@ import productTypesRoutes from "../modules/product-types/product-types.routes.js
 import sizesRoutes from "../modules/sizes/sizes.routes.js";
 import productVariantsRoutes from "../modules/product-variants/product-variants.routes.js";
 import couponsRoutes from "../modules/coupons/coupons.routes.js";
+import * as couponsCtrl from "../modules/coupons/coupons.controller.js";
+import * as couponsV from "../modules/coupons/coupons.validator.js";
 
 import notificationsRoutes from "../modules/notifications/notifications.routes.js";
 import pushNotificationsRoutes from "../modules/push-notifications/push-notifications.routes.js";
@@ -74,6 +76,7 @@ const router = Router();
 router.post("/register", validate(authV.publicRegisterSchema), authCtrl.publicRegister);
 router.use("/auth", authRoutes);
 router.get("/public/branding", adminBrandingCtrl.getPublic);
+router.get("/public/offers", validate(couponsV.listQuerySchema), couponsCtrl.listPublic);
 router.use("/client", clientRoutes);
 router.use("/admin/branding", adminBrandingRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);
