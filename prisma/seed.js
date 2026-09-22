@@ -92,7 +92,7 @@ async function findOrCreate(model, where, create) {
   return await model.create({ data: create });
 }
 
-/** Drop legacy seed products so re-seed keeps a single water catalog (best-effort). */
+/** Drop obsolete seed products (best-effort). Keeps the multi-product catalog. */
 async function removeLegacyCatalogProducts(names) {
   for (const name of names) {
     const p = await prisma.product.findFirst({ where: { name } });
@@ -520,8 +520,8 @@ async function main() {
         userId: ru.id,
         title: "Home",
         address: i === 0 ? "بغداد، المنصور - حي دراغ" : `بغداد — عنوان تجريبي #${i + 1}`,
-        latitude: riders[i].lat,
-        longitude: riders[i].lng,
+        latitude: String(riders[i].lat),
+        longitude: String(riders[i].lng),
         isDefault: true,
       },
     );
@@ -541,11 +541,8 @@ async function main() {
   }
 
   // ---- Catalog: categories + many water products with real Unsplash images ----
-  await removeLegacyCatalogProducts([
-    "Seed Water",
-    "Seed Chips",
-    "Qarora Natural Drinking Water",
-  ]);
+  // Do NOT delete existing catalog products — upsert/add only.
+  await removeLegacyCatalogProducts(["Seed Water", "Seed Chips"]);
 
   const categoryDefs = [
     {
@@ -846,14 +843,18 @@ async function main() {
     for (const s of sizeMap) {
       const sku = `${skuBase}-${s.suffix}`;
       const row = await prisma.productVariant.upsert({
-        where: { sku },
+        where: {
+          productId_sizeId_typeId: {
+            productId: product.id,
+            sizeId: s.size.id,
+            typeId: productType.id,
+          },
+        },
         update: {
-          productId: product.id,
-          sizeId: s.size.id,
-          typeId: productType.id,
           price: item.prices[s.key],
           stock: item.stock[s.key],
           currency: "IQD",
+          sku,
           imageUrl: item.image,
           images: s.gallery,
         },
@@ -1322,7 +1323,7 @@ async function main() {
   console.log("Drivers:   driver@qarora.com | driver2@qarora.local | driver3@qarora.local | driver4@qarora.local");
   console.log("Clients:   customer@qarora.local | client2@qarora.local | client3@qarora.local");
   console.log("");
-  console.log("Catalog: one product — Qarora Natural Drinking Water (S / M / L bottle variants).");
+  console.log(`Catalog: ${productCatalog.length} products across ${categoryDefs.length} categories (with S/M/L variants).`);
 }
 
 main()

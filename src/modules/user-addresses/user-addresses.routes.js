@@ -8,7 +8,12 @@ import * as v from "./user-addresses.validator.js";
 const r = Router();
 const PERM = "user_addresses.manage";
 
-// Self-service for the logged-in user (mobile)
+// Self-service for the logged-in user (mobile) — register BEFORE /:id
+r.get("/mine", authenticate, ctrl.listMine);
+r.post("/mine", authenticate, validate(v.createSchema), ctrl.createMine);
+r.patch("/mine/:id", authenticate, validate(v.updateSchema), ctrl.updateMine);
+r.delete("/mine/:id", authenticate, validate(v.idParamSchema), ctrl.removeMine);
+// Back-compat aliases
 r.get("/me", authenticate, ctrl.listMine);
 r.post("/me", authenticate, validate(v.createSchema), ctrl.createMine);
 r.patch("/me/:id", authenticate, validate(v.updateSchema), ctrl.updateMine);
