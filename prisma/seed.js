@@ -959,27 +959,109 @@ async function main() {
     }
   }
 
-  // ---- Coupons ----
-  await prisma.coupon.upsert({
-    where: { code: "WELCOME10" },
-    update: {},
-    create: {
+  // ---- Coupons / home offers (managed in admin dashboard) ----
+  const offerDefs = [
+    {
       code: "WELCOME10",
       title: "Welcome discount",
-      titleI18n: { en: "Welcome discount", ar: "خصم ترحيبي" },
-      couponType: "general",
+      titleAr: "خصم الترحيب",
+      description: "10% off your first water order",
+      descriptionAr: "خصم ١٠٪ على أول طلب مياه عبر زادواي",
       discountType: "PERCENTAGE",
       discount: 10,
-      startDate: new Date(),
-      endDate: nowPlusMinutes(60 * 24 * 30),
-      minimumAmount: 1,
-      maximumDiscount: 5,
-      status: 1,
-      description: "Seed coupon",
-      descriptionI18n: { en: "Seed coupon", ar: "كوبون تجريبي" },
+      maximumDiscount: 5000,
+      minimumAmount: 5000,
+      imageUrl: "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=1200&q=85",
     },
-  });
-
+    {
+      code: "BAGHDAD25",
+      title: "Baghdad free delivery",
+      titleAr: "توصيل بغداد مجاناً",
+      description: "Free delivery inside Baghdad",
+      descriptionAr: "توصيل مجاني داخل بغداد على الطلبات فوق ١٥ ألف",
+      discountType: "FIXED",
+      discount: 2500,
+      maximumDiscount: 2500,
+      minimumAmount: 15000,
+      imageUrl: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=1200&q=85",
+    },
+    {
+      code: "FAMILY20",
+      title: "Family pack deal",
+      titleAr: "عرض الكراتين العائلية",
+      description: "20% on family packs",
+      descriptionAr: "خصم ٢٠٪ على كراتين العائلة لهذا الأسبوع",
+      discountType: "PERCENTAGE",
+      discount: 20,
+      maximumDiscount: 10000,
+      minimumAmount: 10000,
+      imageUrl: "https://images.unsplash.com/photo-1523362628745-0c100171e518?w=1200&q=85",
+    },
+    {
+      code: "OFFICE15",
+      title: "Office cooler offer",
+      titleAr: "عرض برادات المكاتب",
+      description: "15% on office jugs",
+      descriptionAr: "خصم ١٥٪ على جالونات المكاتب والبرادات",
+      discountType: "PERCENTAGE",
+      discount: 15,
+      maximumDiscount: 20000,
+      minimumAmount: 20000,
+      imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=85",
+    },
+    {
+      code: "SUMMER5K",
+      title: "Summer cash off",
+      titleAr: "خصم الصيف النقدي",
+      description: "5000 IQD off",
+      descriptionAr: "٥٠٠٠ دينار خصم مباشر على طلبك القادم",
+      discountType: "FIXED",
+      discount: 5000,
+      maximumDiscount: 5000,
+      minimumAmount: 25000,
+      imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&q=85",
+    },
+  ];
+  for (const o of offerDefs) {
+    await prisma.coupon.upsert({
+      where: { code: o.code },
+      update: {
+        title: o.title,
+        titleAr: o.titleAr,
+        titleI18n: { en: o.title, ar: o.titleAr },
+        description: o.description,
+        descriptionAr: o.descriptionAr,
+        descriptionI18n: { en: o.description, ar: o.descriptionAr },
+        couponType: "general",
+        discountType: o.discountType,
+        discount: o.discount,
+        startDate: new Date(),
+        endDate: nowPlusMinutes(60 * 24 * 60),
+        minimumAmount: o.minimumAmount,
+        maximumDiscount: o.maximumDiscount,
+        status: 1,
+        imageUrl: o.imageUrl,
+      },
+      create: {
+        code: o.code,
+        title: o.title,
+        titleAr: o.titleAr,
+        titleI18n: { en: o.title, ar: o.titleAr },
+        description: o.description,
+        descriptionAr: o.descriptionAr,
+        descriptionI18n: { en: o.description, ar: o.descriptionAr },
+        couponType: "general",
+        discountType: o.discountType,
+        discount: o.discount,
+        startDate: new Date(),
+        endDate: nowPlusMinutes(60 * 24 * 60),
+        minimumAmount: o.minimumAmount,
+        maximumDiscount: o.maximumDiscount,
+        status: 1,
+        imageUrl: o.imageUrl,
+      },
+    });
+  }
   // ---- Guest + Order flow ----
   const guest = await findOrCreate(
     prisma.guestCustomer,

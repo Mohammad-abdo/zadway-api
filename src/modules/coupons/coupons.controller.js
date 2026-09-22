@@ -48,3 +48,13 @@ export async function remove(req, res) {
     return errorResponse(res, e.message, 500);
   }
 }
+
+export async function listPublic(req, res) {
+  try {
+    const { items, total, page, limit } = await service.listPublic(req.query);
+    const pages = Math.max(1, Math.ceil(total / limit));
+    return paginatedResponse(res, items, { page, limit, total, pages }, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}

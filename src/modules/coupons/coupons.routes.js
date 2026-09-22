@@ -8,6 +8,9 @@ import * as v from "./coupons.validator.js";
 const r = Router();
 const PERM = "coupons.manage";
 
+// Public active offers for the mobile home section
+r.get("/all", validate(v.listQuerySchema), ctrl.listPublic);
+
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
 r.get("/:id", authenticate, requireResourceAccess(PERM), validate(v.idParamSchema), ctrl.getById);
 r.post("/", authenticate, requirePermission([PERM]), validate(v.createSchema), ctrl.create);
