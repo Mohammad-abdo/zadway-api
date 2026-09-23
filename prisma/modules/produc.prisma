@@ -1,33 +1,48 @@
 model Category {
-  id          Int      @id @default(autoincrement())
-  name        String
-  nameI18n    Json?    @map("name_i18n")
-  description String?
-  descriptionI18n Json? @map("description_i18n")
-  image_url   String?
-  products    Product[]
+  id              Int        @id @default(autoincrement())
+  name            String
+  nameI18n        Json?      @map("name_i18n")
+  description     String?
+  descriptionI18n Json?      @map("description_i18n")
+  image_url       String?
+  /// null = platform/admin category; set = captain-owned marketplace category
+  ownerDriverId   Int?       @map("owner_driver_id")
+  /// null = top-level; set = subcategory under another category
+  parentId        Int?       @map("parent_id")
+  products        Product[]
+  parent          Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Category[] @relation("CategoryTree")
+  ownerDriver     User?      @relation("CategoryOwner", fields: [ownerDriverId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+
+  @@index([ownerDriverId])
+  @@index([parentId])
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  nameI18n    Json?    @map("name_i18n")
-  description String?
-  descriptionI18n Json? @map("description_i18n")
-  categoryId  Int
-  imageUrl    String
-  images      Json?
-  variants    ProductVariant[]
-  banners     Banner[]
-  isActive    Boolean  @default(true) @map("is_active")
-  category    Category @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  name            String
+  nameI18n        Json?    @map("name_i18n")
+  description     String?
+  descriptionI18n Json?    @map("description_i18n")
+  categoryId      Int
+  imageUrl        String
+  images          Json?
+  variants        ProductVariant[]
+  banners         Banner[]
+  isActive        Boolean  @default(true) @map("is_active")
+  /// null = platform/admin product; set = captain-owned marketplace product
+  ownerDriverId   Int?     @map("owner_driver_id")
+  category        Category @relation(fields: [categoryId], references: [id])
+  ownerDriver     User?    @relation("ProductOwner", fields: [ownerDriverId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
 
   @@index([isActive])
+  @@index([ownerDriverId])
+  @@index([categoryId])
 }
 
 model ProductType {

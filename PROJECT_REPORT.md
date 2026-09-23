@@ -337,6 +337,12 @@ GOOGLE_MAPS_API_KEY=...   # اختياري
 | POST | `/api/drivers/me/inventory` | إضافة صنف للمخزون |
 | PATCH | `/api/drivers/me/inventory/:id` | تحديث كمية/سعر |
 | DELETE | `/api/drivers/me/inventory/:id` | حذف صنف |
+| GET/POST | `/api/drivers/me/categories` | تصنيفات الكابتن (سوق خاص) |
+| PATCH/DELETE | `/api/drivers/me/categories/:id` | تعديل/حذف تصنيف مملوك |
+| GET/POST | `/api/drivers/me/products` | منتجات الكابتن + variants + مخزون |
+| PATCH/DELETE | `/api/drivers/me/products/:id` | تعديل/حذف منتج مملوك |
+| POST/PATCH | `/api/drivers/me/products/:id/variants` | إضافة/تحديث متغير |
+| GET | `/api/drivers/me/reports` | تقارير أرباح وعمولة وكتالوج |
 | PATCH | `/api/drivers/me/location` | تحديث GPS (lat, lng, heading) |
 | GET | `/api/drivers/me/product-orders` | طلبات متاحة/مخصصة للسائق |
 | GET | `/api/drivers/me/product-orders/:orderId` | تفاصيل طلب |

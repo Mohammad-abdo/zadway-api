@@ -244,6 +244,49 @@
             "url": "{{baseUrl}}/drivers/me/product-orders/{{orderId}}/status",
             "description": "Allowed: PICKED_UP | ON_THE_WAY | DELIVERED"
           }
+        },
+        {
+          "name": "GET Driver categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/categories"
+          }
+        },
+        {
+          "name": "POST Driver category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"مياه\",\n  \"nameAr\": \"مياه\"\n}" },
+            "url": "{{baseUrl}}/drivers/me/categories"
+          }
+        },
+        {
+          "name": "POST Driver product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ماء 20ل\",\n  \"categoryId\": 1,\n  \"imageUrl\": \"https://example.com/water.jpg\",\n  \"variants\": [{ \"sizeName\": \"20L\", \"typeName\": \"عادي\", \"price\": 5000, \"quantityOnHand\": 20 }]\n}"
+            },
+            "url": "{{baseUrl}}/drivers/me/products"
+          }
+        },
+        {
+          "name": "GET Driver reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/reports"
+          }
         }
       ]
     },

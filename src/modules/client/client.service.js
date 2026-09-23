@@ -1,6 +1,7 @@
 import prisma from "../../config/prisma.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import * as productOrdersService from "../product-orders/product-orders.service.js";
+import { getPlatformCommissionPct } from "../platform-settings/platform-settings.service.js";
 import {
   enrichCatalogVariant,
   enrichOrderLineItem,
@@ -82,10 +83,14 @@ export async function resolveGuestIdForClientOrder(body, riderUser) {
 
 export async function getCatalog() {
   const [categories, productsRaw] = await Promise.all([
-    prisma.category.findMany({ take: 200, orderBy: { id: "asc" } }),
+    prisma.category.findMany({
+      take: 300,
+      orderBy: { id: "asc" },
+      include: { children: { orderBy: { id: "asc" } } },
+    }),
     prisma.product.findMany({
       where: { isActive: true },
-      take: 200,
+      take: 300,
       orderBy: { id: "desc" },
       include: {
         category: true,
@@ -144,15 +149,18 @@ export async function createClientOrder(body, riderUser) {
     riderUser && String(riderUser.userType || "").toLowerCase() === "rider" ? riderUser.id : undefined;
 
   const b = body && typeof body === "object" ? body : {};
-  const { guest: _g, guestId: _gi, ...payload } = b;
+  const { guest: _g, guestId: _gi, commissionPct: _clientPct, ...payload } = b;
 
   const status = payload.status === "PENDING" || payload.status === "NEW" ? payload.status : "NEW";
+  // Mobile clients cannot set commission — platform rate from admin settings.
+  const commissionPct = await getPlatformCommissionPct();
 
   const order = await productOrdersService.create({
     ...payload,
     guestId,
     riderUserId,
     status,
+    commissionPct,
   });
 
   const isRider = riderUserId != null;

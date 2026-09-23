@@ -66,6 +66,7 @@ import adminBrandingRoutes from "../modules/admin-branding/admin-branding.routes
 import adminDashboardRoutes from "../modules/admin-dashboard/admin-dashboard.routes.js";
 import adminMetaRoutes from "../modules/admin-meta/admin-meta.routes.js";
 import adminReportsRoutes from "../modules/admin-reports/admin-reports.routes.js";
+import platformSettingsRoutes from "../modules/platform-settings/platform-settings.routes.js";
 import clientRoutes from "../modules/client/client.routes.js";
 import { validate } from "../core/middlewares/validate.middleware.js";
 import * as authCtrl from "../modules/auth/auth.controller.js";
@@ -79,6 +80,7 @@ router.get("/public/branding", adminBrandingCtrl.getPublic);
 router.get("/public/offers", validate(couponsV.listQuerySchema), couponsCtrl.listPublic);
 router.use("/client", clientRoutes);
 router.use("/admin/branding", adminBrandingRoutes);
+router.use("/admin/settings", platformSettingsRoutes);
 router.use("/admin/dashboard", adminDashboardRoutes);
 router.use("/admin/meta", adminMetaRoutes);
 router.use("/admin/reports", adminReportsRoutes);

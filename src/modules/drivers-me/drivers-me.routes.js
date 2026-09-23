@@ -20,4 +20,23 @@ r.post("/me/product-orders/:orderId/offers", validate(v.driverOfferSchema), ctrl
 r.post("/me/product-orders/:orderId/claim", validate(v.claimOrderSchema), ctrl.claimProductOrder);
 r.patch("/me/product-orders/:orderId/status", validate(v.driverOrderStatusSchema), ctrl.updateProductOrderStatus);
 
+// Marketplace — captain-owned categories / products / reports
+r.get("/me/categories", ctrl.listCategories);
+r.post("/me/categories", validate(v.categoryCreateSchema), ctrl.createCategory);
+r.patch("/me/categories/:id", validate(v.categoryUpdateSchema), ctrl.updateCategory);
+r.delete("/me/categories/:id", validate(v.categoryIdParamSchema), ctrl.removeCategory);
+
+r.get("/me/products", ctrl.listProducts);
+r.post("/me/products", validate(v.productCreateSchema), ctrl.createProduct);
+r.patch("/me/products/:id", validate(v.productUpdateSchema), ctrl.updateProduct);
+r.delete("/me/products/:id", validate(v.productIdParamSchema), ctrl.removeProduct);
+r.post("/me/products/:id/variants", validate(v.productVariantCreateSchema), ctrl.addProductVariant);
+r.patch(
+  "/me/products/:id/variants/:variantId",
+  validate(v.productVariantUpdateSchema),
+  ctrl.updateProductVariant,
+);
+
+r.get("/me/reports", ctrl.getReports);
+
 export default r;

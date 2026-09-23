@@ -42,6 +42,8 @@ model User {
   inventoryLogs          InventoryLog[]
   paymentsAsUser         Payment[]                    @relation("PaymentUser")
   paymentsAsDriver       Payment[]                    @relation("PaymentDriver")
+  ownedCategories        Category[]                   @relation("CategoryOwner")
+  ownedProducts          Product[]                    @relation("ProductOwner")
 
   driverDocuments         DriverDocument[]
   driverComplaints        Complaint[]         @relation("DriverComplaints")
