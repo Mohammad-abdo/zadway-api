@@ -287,6 +287,54 @@
             "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": "{{baseUrl}}/drivers/me/reports"
           }
+        },
+        {
+          "name": "POST Driver media",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [] }]
+            },
+            "url": "{{baseUrl}}/drivers/me/media"
+          }
+        },
+        {
+          "name": "GET Driver product by id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/products/{{productId}}"
+          }
+        },
+        {
+          "name": "GET Driver wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/wallet"
+          }
+        },
+        {
+          "name": "POST Driver withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 10000,\n  \"currency\": \"IQD\"\n}" },
+            "url": "{{baseUrl}}/drivers/me/withdrawals"
+          }
+        },
+        {
+          "name": "GET Driver commissions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": "{{baseUrl}}/drivers/me/commissions"
+          }
         }
       ]
     },
