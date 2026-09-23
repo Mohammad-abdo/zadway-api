@@ -324,6 +324,14 @@ export async function updateStatus(id, status) {
     data,
   });
   notifyOrderStatusChanged(updated, oldStatus);
+  if (updated.status === "DELIVERED" && updated.driverId) {
+    try {
+      const { creditDriverForDeliveredOrder } = await import("../drivers-me/drivers-me-finance.service.js");
+      await creditDriverForDeliveredOrder(updated);
+    } catch (_) {
+      /* best-effort */
+    }
+  }
   return updated;
 }
 

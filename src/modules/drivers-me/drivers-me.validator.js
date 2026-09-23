@@ -118,6 +118,7 @@ const variantInputSchema = z
     currency: z.string().trim().min(1).max(8).optional(),
     sku: z.string().trim().max(64).optional().nullable(),
     imageUrl: z.string().max(2048).optional().nullable(),
+    images: z.array(z.string()).optional().nullable(),
   })
   .passthrough();
 
@@ -132,7 +133,7 @@ export const productCreateSchema = z.object({
       imageUrl: z.string().trim().min(1).max(2048),
       images: z.array(z.string()).optional().nullable(),
       isActive: z.boolean().optional(),
-      variants: z.array(variantInputSchema).min(1),
+      variants: z.array(variantInputSchema).optional().nullable(),
     })
     .passthrough(),
 });
@@ -165,5 +166,20 @@ export const productVariantUpdateSchema = z.object({
   }),
   body: variantInputSchema.partial().extend({
     price: z.coerce.number().nonnegative().optional(),
+    images: z.array(z.string()).optional().nullable(),
+  }),
+});
+
+export const productVariantDeleteSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+    variantId: z.coerce.number().int().positive(),
+  }),
+});
+
+export const withdrawCreateSchema = z.object({
+  body: z.object({
+    amount: z.coerce.number().positive(),
+    currency: z.string().trim().min(1).max(8).optional(),
   }),
 });

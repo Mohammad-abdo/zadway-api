@@ -337,5 +337,14 @@ export async function updateMyProductOrderStatus(driverId, orderId, status) {
     e.statusCode = 403;
     throw e;
   }
-  return productOrdersService.updateStatus(orderId, next);
+  const updated = await productOrdersService.updateStatus(orderId, next);
+  if (updated.status === "DELIVERED") {
+    try {
+      const { creditDriverForDeliveredOrder } = await import("./drivers-me-finance.service.js");
+      await creditDriverForDeliveredOrder(updated);
+    } catch (_) {
+      /* wallet credit is best-effort; delivery already succeeded */
+    }
+  }
+  return updated;
 }

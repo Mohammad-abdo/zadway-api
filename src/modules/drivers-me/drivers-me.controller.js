@@ -1,5 +1,7 @@
 import * as service from "./drivers-me.service.js";
 import * as catalog from "./drivers-me-catalog.service.js";
+import * as finance from "./drivers-me-finance.service.js";
+import * as media from "./drivers-me-media.service.js";
 import * as productOrdersService from "../product-orders/product-orders.service.js";
 import { successResponse, errorResponse, paginatedResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
@@ -146,6 +148,15 @@ export async function listProducts(req, res) {
   }
 }
 
+export async function getProduct(req, res) {
+  try {
+    const row = await catalog.getMyProduct(req.user.id, req.params.id);
+    return successResponse(res, row, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
 export async function createProduct(req, res) {
   try {
     const row = await catalog.createMyProduct(req.user.id, req.body);
@@ -196,9 +207,67 @@ export async function updateProductVariant(req, res) {
   }
 }
 
+export async function removeProductVariant(req, res) {
+  try {
+    const row = await catalog.removeMyProductVariant(
+      req.user.id,
+      req.params.id,
+      req.params.variantId,
+    );
+    return successResponse(res, row, t("common.deleted", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
 export async function getReports(req, res) {
   try {
     const data = await catalog.getMyReports(req.user.id);
+    return successResponse(res, data, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
+export async function uploadMedia(req, res) {
+  try {
+    const data = await media.storeDriverImage(req.file);
+    return successResponse(res, data, t("upload.stored", req.locale) || "Stored", 201);
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
+export async function getWallet(req, res) {
+  try {
+    const data = await finance.getMyWallet(req.user.id);
+    return successResponse(res, data, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
+export async function listWithdrawals(req, res) {
+  try {
+    const rows = await finance.listMyWithdrawals(req.user.id);
+    return successResponse(res, rows, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
+export async function createWithdrawal(req, res) {
+  try {
+    const row = await finance.createMyWithdrawal(req.user.id, req.body);
+    return successResponse(res, row, t("common.created", req.locale), 201);
+  } catch (e) {
+    return errorResponse(res, e.message, e.statusCode || 500);
+  }
+}
+
+export async function getCommissions(req, res) {
+  try {
+    const data = await finance.getMyCommissions(req.user.id);
     return successResponse(res, data, t("common.success", req.locale));
   } catch (e) {
     return errorResponse(res, e.message, e.statusCode || 500);

@@ -244,10 +244,18 @@ export async function listMyProducts(driverId) {
   return rows.map((p) => enrichDriverProduct(p, driverId));
 }
 
+export async function getMyProduct(driverId, productId) {
+  const product = await assertOwnedProduct(driverId, productId);
+  const full = await prisma.product.findUnique({
+    where: { id: product.id },
+    include: productDetailInclude,
+  });
+  return enrichDriverProduct(full, driverId);
+}
+
 /**
- * Create captain-owned product + variants + inventory rows.
- * Body: { name, nameAr?, description?, categoryId, imageUrl, isActive?,
- *   variants: [{ sizeName|sizeId, typeName|typeId, price, quantityOnHand, currency?, sku? }] }
+ * Create captain-owned product (+ optional variants).
+ * Variants may be omitted so the captain can fill the variants tab after create.
  */
 export async function createMyProduct(driverId, body) {
   const name = String(body?.name || "").trim();
@@ -272,12 +280,6 @@ export async function createMyProduct(driverId, body) {
   }
 
   const variantsInput = Array.isArray(body?.variants) ? body.variants : [];
-  if (!variantsInput.length) {
-    const e = new Error("at least one variant required");
-    e.statusCode = 400;
-    throw e;
-  }
-
   const nameAr = body?.nameAr != null ? String(body.nameAr).trim() : name;
   const description = body?.description != null ? String(body.description).trim() : null;
 
@@ -325,6 +327,7 @@ export async function createMyProduct(driverId, body) {
           currency,
           sku: v.sku ? String(v.sku).trim() || null : null,
           imageUrl: v.imageUrl || null,
+          images: Array.isArray(v.images) ? v.images : undefined,
         },
       });
       await tx.driverInventoryItem.create({
@@ -363,7 +366,9 @@ export async function updateMyProduct(driverId, id, body) {
     data.descriptionI18n = descI18nPayload(body?.description, body?.descriptionAr);
   }
   if (body?.imageUrl != null) data.imageUrl = String(body.imageUrl).trim();
-  if (body?.images !== undefined) data.images = Array.isArray(body.images) ? body.images : null;
+  if (body?.images !== undefined) {
+    data.images = Array.isArray(body.images) ? (body.images.length ? body.images : null) : null;
+  }
   if (body?.isActive !== undefined) data.isActive = !!body.isActive;
   if (body?.categoryId != null) {
     await assertOwnedCategory(driverId, body.categoryId);
@@ -424,6 +429,7 @@ export async function addMyProductVariant(driverId, productId, body) {
       currency,
       sku: body?.sku ? String(body.sku).trim() || null : null,
       imageUrl: body?.imageUrl || null,
+      images: Array.isArray(body?.images) ? body.images : undefined,
     },
     include: { size: true, type: true },
   });
@@ -450,7 +456,12 @@ export async function updateMyProductVariant(driverId, productId, variantId, bod
   if (body?.stock != null) data.stock = Number(body.stock);
   if (body?.currency != null) data.currency = String(body.currency);
   if (body?.imageUrl !== undefined) data.imageUrl = body.imageUrl || null;
+  if (body?.images !== undefined) {
+    data.images = Array.isArray(body.images) ? (body.images.length ? body.images : null) : null;
+  }
   if (body?.sku !== undefined) data.sku = body.sku ? String(body.sku).trim() || null : null;
+  if (body?.sizeId != null) data.sizeId = Number(body.sizeId);
+  if (body?.typeId != null) data.typeId = Number(body.typeId);
 
   await prisma.productVariant.update({ where: { id: Number(variantId) }, data });
 
@@ -471,6 +482,27 @@ export async function updateMyProductVariant(driverId, productId, variantId, bod
     );
   }
 
+  const full = await prisma.product.findUnique({
+    where: { id: Number(productId) },
+    include: productDetailInclude,
+  });
+  return enrichDriverProduct(full, driverId);
+}
+
+export async function removeMyProductVariant(driverId, productId, variantId) {
+  await assertOwnedProduct(driverId, productId);
+  const variant = await prisma.productVariant.findUnique({ where: { id: Number(variantId) } });
+  if (!variant || variant.productId !== Number(productId)) {
+    const e = new Error("variant not found");
+    e.statusCode = 404;
+    throw e;
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.driverInventoryItem.deleteMany({
+      where: { driverId: Number(driverId), variantId: Number(variantId) },
+    });
+    await tx.productVariant.delete({ where: { id: Number(variantId) } });
+  });
   const full = await prisma.product.findUnique({
     where: { id: Number(productId) },
     include: productDetailInclude,
