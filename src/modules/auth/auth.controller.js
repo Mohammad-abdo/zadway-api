@@ -1,9 +1,9 @@
 import fs from "fs/promises";
-import path from "path";
 import * as service from "./auth.service.js";
 import { successResponse, errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
 import { allocateSequentialFilename } from "../../core/upload/allocateSequentialFile.js";
+import { detectImageExtension } from "../../core/upload/detectFileType.js";
 import { ensureUploadDirs } from "../../core/upload/mediaPaths.js";
 
 export async function login(req, res) {
@@ -60,7 +60,9 @@ export async function uploadAvatar(req, res) {
     if (!file?.buffer?.length) {
       return errorResponse(res, "لم يتم إرسال ملف", 400);
     }
-    const ext = { "image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp" }[file.mimetype];
+    // Derived from the file's actual magic bytes, never from the
+    // client-supplied mimetype — see core/upload/detectFileType.js.
+    const ext = detectImageExtension(file.buffer);
     if (!ext) return errorResponse(res, "نوع الملف غير مدعوم", 415);
 
     ensureUploadDirs();

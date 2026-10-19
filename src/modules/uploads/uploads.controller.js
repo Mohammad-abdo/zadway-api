@@ -1,30 +1,14 @@
 import fs from "fs/promises";
-import path from "path";
 import { allocateSequentialFilename } from "../../core/upload/allocateSequentialFile.js";
+import { detectImageExtension, detectVideoExtension } from "../../core/upload/detectFileType.js";
 import { ensureUploadDirs } from "../../core/upload/mediaPaths.js";
 import { successResponse, errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
 
-const MIME_IMAGE = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/gif": ".gif",
-  "image/webp": ".webp",
-};
-
-const MIME_VIDEO = {
-  "video/mp4": ".mp4",
-  "video/webm": ".webm",
-  "video/quicktime": ".mov",
-};
-
+// The extension is derived from the file's actual magic bytes, never from
+// the client-supplied mimetype/filename — see core/upload/detectFileType.js.
 function extensionFor(kind, file) {
-  const map = kind === "video" ? MIME_VIDEO : MIME_IMAGE;
-  const fromMime = map[file.mimetype];
-  if (fromMime) return fromMime;
-  const ext = path.extname(file.originalname || "").toLowerCase();
-  if (ext && /^\.[a-z0-9]{2,8}$/i.test(ext)) return ext;
-  return null;
+  return kind === "video" ? detectVideoExtension(file.buffer) : detectImageExtension(file.buffer);
 }
 
 export const uploadSingle =
