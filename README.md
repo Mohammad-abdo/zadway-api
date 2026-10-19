@@ -1,285 +1,318 @@
-# Tovo Backend
+# Zadway API (Qarora)
 
-Node.js + Express backend API for Tovo taxi/ride-hailing management system with Prisma ORM and MySQL.
+Backend for the Zadway platform: the admin panel, the customer app and the driver (captain) app.
+Built with **Node.js + Express**, **Prisma ORM** on **MySQL**, JWT auth and a WebSocket server for live updates.
 
-## Engineering Docs (Start Here)
+---
 
-- [Developer Onboarding](docs/DEVELOPER_ONBOARDING.md)
-- [Backend Modernization Guide](docs/BACKEND_MODERNIZATION_GUIDE.md)
-- [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md)
-- [Response Contract Policy](docs/RESPONSE_CONTRACT_POLICY.md)
-- [Refactor Playbook](docs/REFACTOR_PLAYBOOK.md)
-- [Module Ownership Map](docs/MODULE_OWNERSHIP_MAP.md)
-- [Where To Edit By Task](docs/WHERE_TO_EDIT_BY_TASK.md)
-- [API Contract Baseline](docs/api-contract-baseline.md)
+## Table of contents
 
-## Features
+- [Tech stack](#tech-stack)
+- [Getting started](#getting-started)
+- [Environment variables](#environment-variables)
+- [Database (Prisma)](#database-prisma)
+- [npm scripts](#npm-scripts)
+- [Project structure](#project-structure)
+- [API conventions](#api-conventions)
+- [Endpoints overview](#endpoints-overview)
+- [Realtime (WebSocket)](#realtime-websocket)
+- [File uploads](#file-uploads)
+- [Testing & Postman](#testing--postman)
 
-- RESTful API
-- JWT Authentication
-- MySQL Database with Prisma ORM
-- User Management (Riders, Drivers, Admins, Fleet)
-- Ride Request Management
-- Payment & Wallet System
-- Service Management
-- Zone Management
-- Airport Management
-- SOS (Emergency Contacts)
-- Driver Documents
-- Withdraw Requests
-- Complaints & Comments
-- Ratings & Reviews
-- Coupons
-- FAQs
-- Settings Management
-- Google Maps Integration (Places API, Roads API)
+---
 
-## Getting Started
+## Tech stack
 
-### Prerequisites
+| Area          | Library                                   |
+| ------------- | ----------------------------------------- |
+| HTTP server   | Express 4, helmet, cors, morgan           |
+| Database      | MySQL 8 + Prisma 6 (multi-file schema)    |
+| Auth          | JWT (access + refresh), bcryptjs          |
+| Validation    | zod                                       |
+| Realtime      | ws (WebSocket on `/ws`)                   |
+| Docs          | swagger-jsdoc + swagger-ui (`/api/docs`)  |
+| Reports       | exceljs (Excel), puppeteer (PDF)          |
+| Push          | firebase-admin                            |
+| Tests         | vitest + supertest                        |
 
-- Node.js (v18 or higher)
-- MySQL (v8.0 or higher)
-- npm or yarn
+## Getting started
 
-### Install Dependencies
+**Requirements:** Node.js 18+, MySQL 8+.
 
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### Environment Variables
+# 2. Create your .env (see the next section)
 
-Create a `.env` file in the backend directory:
-
-```env
-PORT=5000
-NODE_ENV=development
-
-# Database
-DATABASE_URL="mysql://user:password@localhost:3306/driverproject"
-
-# JWT
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=7d
-
-# Google Maps API (for Places and Roads APIs)
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-```
-
-### Database Setup
-
-1. Create a MySQL database:
-```sql
-CREATE DATABASE driverproject;
-```
-
-2. Generate Prisma Client:
-```bash
-npm run prisma:generate
-```
-
-3. Run migrations to create tables:
-```bash
-npm run prisma:migrate
-```
-
-Or push schema directly (for development):
-```bash
+# 3. Create the database tables and the Prisma client
 npm run prisma:push
-```
+npm run prisma:generate
 
-4. (Optional) Open Prisma Studio to view/edit data:
-```bash
-npm run prisma:studio
-```
+# 4. (Optional) Seed demo data
+npm run seed:all
 
-### Development
-
-```bash
+# 5. Start the dev server (auto-restart with nodemon)
 npm run dev
 ```
 
-The API will be available at `http://localhost:5000`
+The server starts on `http://localhost:3000` (or `PORT`):
 
-### Production
+- API base URL: `http://localhost:3000/api`
+- Swagger docs: `http://localhost:3000/api/docs`
+- WebSocket: `ws://localhost:3000/ws?token=<JWT>`
 
-```bash
-npm start
+For production use `npm start`.
+
+## Environment variables
+
+Create a `.env` file in the `api/` folder:
+
+```env
+# Server
+PORT=3000
+NODE_ENV=development
+
+# Database
+DATABASE_URL="mysql://user:password@localhost:3306/zadway"
+DB_CONNECTION_LIMIT=5        # optional, Prisma pool size
+DB_POOL_TIMEOUT=20           # optional, seconds
+
+# JWT
+JWT_SECRET=change_me
+JWT_EXPIRE=7d
+JWT_REFRESH_SECRET=change_me_too
+JWT_REFRESH_EXPIRE=30d
+
+# CORS (comma separated; empty = allow all origins)
+CORS_ORIGINS=http://localhost:5173
+CORS_CREDENTIALS=false
+
+# Optional tuning
+AUTH_RATE_LIMIT_WINDOW_MS=900000   # 15 minutes
+AUTH_RATE_LIMIT_MAX=50
+UPLOAD_MAX_IMAGE_MB=5
+UPLOAD_MAX_VIDEO_MB=50
+PRODUCT_ORDER_MAX_KM=20            # radius for matching drivers to an order
+PRODUCT_ORDER_MAX_CANDIDATES=10
 ```
 
-## Prisma Commands
+> The variable is `CORS_ORIGINS` (plural). `CORS_ORIGIN` is ignored.
 
-- `npm run prisma:generate` - Generate Prisma Client
-- `npm run prisma:migrate` - Create and run migrations
-- `npm run prisma:push` - Push schema changes to database (dev only)
-- `npm run prisma:studio` - Open Prisma Studio GUI
+## Database (Prisma)
 
-## API Endpoints
+The schema is split into several files under `prisma/modules/`:
 
-### Authentication
-- `POST /api/auth/register` - Register rider
-- `POST /api/auth/driver-register` - Register driver
-- `POST /api/auth/login` - Login
-- `POST /api/auth/logout` - Logout
-- `POST /api/auth/forget-password` - Forget password
-- `POST /api/auth/social-login` - Social login
+| File                  | Contents                                             |
+| --------------------- | ---------------------------------------------------- |
+| `_base.prisma`        | Generator and datasource                             |
+| `users.prisma`        | Users, roles & permissions, wallets, reviews, addresses, bank cards, complaints |
+| `driver.prisma`       | Documents, driver documents, vehicle details         |
+| `produc.prisma`       | Categories, products, sizes, types, variants, coupons |
+| `order.prisma`        | Guests, product orders, items, offers, payments, driver inventory, inventory logs, location updates |
+| `booking.prisma`      | Booking invoices and location updates                |
+| `ride.prisma`         | Ride bids, ratings and histories                     |
+| `support.prisma`      | Support tickets, chat history, pages                 |
+| `notification.prisma` | Notifications and push notifications                 |
+| `admin.prisma`        | Admin login history/devices, admin settings          |
+| `banner.prisma`       | Banners                                              |
+| `seeting.prisma`      | SOS contacts, security audit logs                    |
+| `withdraw.prisma`     | Withdraw requests                                    |
 
-### Users
-- `GET /api/users/user-list` - Get user list (authenticated staff with directory permission)
-- `GET /api/users/user-detail` - Get user detail
-- `POST /api/users/update-profile` - Update profile
-- `POST /api/users/change-password` - Change password
-- `POST /api/users/update-user-status` - Update online/available status
-- `POST /api/users/delete-user-account` - Delete account
-- `GET /api/users/get-appsetting` - Get app settings
+Common commands:
 
-### Ride Requests
-- `POST /api/ride-requests/save-riderequest` - Create ride request
-- `GET /api/ride-requests/riderequest-list` - Get ride requests
-- `GET /api/ride-requests/riderequest-detail` - Get ride request detail
-- `POST /api/ride-requests/riderequest-update/:id` - Update ride request
-- `POST /api/ride-requests/riderequest-delete/:id` - Delete ride request
-- `POST /api/ride-requests/riderequest-respond` - Accept/Reject ride
-- `POST /api/ride-requests/complete-riderequest` - Complete ride
-- `POST /api/ride-requests/riderequest/:id/drop/:index` - Update drop location
-- `POST /api/ride-requests/verify-coupon` - Verify coupon
-- `POST /api/ride-requests/apply-bid` - Apply bid
-- `POST /api/ride-requests/get-bidding-riderequest` - Get bidding drivers
-- `POST /api/ride-requests/riderequest-bid-respond` - Accept bid
-- `POST /api/ride-requests/save-ride-rating` - Rate ride
+```bash
+npm run prisma:generate   # regenerate the Prisma client after schema changes
+npm run prisma:push       # sync the schema to the database (development)
+npm run prisma:migrate    # create and apply a migration
+npm run prisma:studio     # browse data in the browser
+```
 
-### Services
-- `GET /api/services/service-list` - Get services
-- `POST /api/services/estimate-price-time` - Estimate price
+## npm scripts
 
-### Payments
-- `POST /api/payments/save-payment` - Save payment
-- `POST /api/payments/earning-list` - Get earnings
+| Script                    | Description                          |
+| ------------------------- | ------------------------------------ |
+| `npm run dev`             | Start with nodemon (development)     |
+| `npm start`               | Start with node (production)         |
+| `npm run prisma:*`        | Prisma commands (see above)          |
+| `npm run prisma:seed`     | Run `prisma/seed.js`                 |
+| `npm run seed:all`        | Run `prisma/seed-all.js` (full demo data) |
+| `npm test`                | Run the vitest suite once            |
+| `npm run test:watch`      | Run vitest in watch mode             |
 
-### Wallets
-- `GET /api/wallets/wallet-detail` - Get wallet
-- `POST /api/wallets/save-wallet` - Add money to wallet
-- `GET /api/wallets/wallet-list` - Get wallet history
-- `GET /api/wallets/reward-list` - Get reward history
+## Project structure
 
-### Dashboard
-- `GET /api/dashboard/admin-dashboard` - Admin dashboard stats
-- `GET /api/dashboard/rider-dashboard` - Rider dashboard stats
-- `GET /api/dashboard/current-riderequest` - Get current ride request
-- `GET /api/dashboard/appsetting` - Get app settings
+```text
+api/
+├── prisma/
+│   ├── modules/          # multi-file Prisma schema
+│   ├── migrations/
+│   └── seed*.js          # seed scripts
+├── src/
+│   ├── server.js         # HTTP + WebSocket bootstrap
+│   ├── app.js            # Express app, middlewares, swagger
+│   ├── config/           # env loading, Prisma client
+│   ├── core/             # middlewares, CRUD helpers, utils, i18n
+│   ├── i18n/             # API message translations (en / ar)
+│   ├── modules/          # one folder per feature
+│   ├── realtime/         # WebSocket server and event hub
+│   ├── routes/index.js   # mounts every module under /api
+│   └── services/         # shared services
+├── uploads/              # uploaded media (served at /uploads)
+├── postman/              # Postman collections and environments
+├── scripts/              # code generators and smoke scripts
+└── tests/                # vitest unit tests
+```
 
-### Driver Documents
-- `GET /api/driver-documents/driver-document-list` - Get driver documents
-- `POST /api/driver-documents/driver-document-save` - Save driver document
-- `POST /api/driver-documents/driver-document-update/:id` - Update document
-- `POST /api/driver-documents/driver-document-delete/:id` - Delete document
+Each feature in `src/modules/<name>/` follows the same layout:
 
-### Documents
-- `GET /api/documents/document-list` - Get document list
+```text
+<name>.routes.js       # routes + auth / permission middlewares
+<name>.controller.js   # request → response
+<name>.service.js      # business logic and Prisma queries
+<name>.validator.js    # zod schemas
+```
 
-### SOS
-- `GET /api/sos/sos-list` - Get SOS contacts
-- `POST /api/sos/save-sos` - Save SOS contact
-- `POST /api/sos/sos-update/:id` - Update SOS contact
-- `POST /api/sos/sos-delete/:id` - Delete SOS contact
-- `POST /api/sos/admin-sos-notify` - Notify admin of SOS
+## API conventions
 
-### Withdraw Requests
-- `GET /api/withdraw-requests/withdrawrequest-list` - Get withdraw requests
-- `POST /api/withdraw-requests/save-withdrawrequest` - Create withdraw request
-- `POST /api/withdraw-requests/update-status/:id` - Update withdraw status
+**Authentication** - send the JWT in the header:
 
-### Complaints
-- `POST /api/complaints/save-complaint` - Save complaint
-- `POST /api/complaints/update-complaint/:id` - Update complaint
+```http
+Authorization: Bearer <token>
+```
 
-### Complaint Comments
-- `GET /api/complaint-comments/complaintcomment-list` - Get comments
-- `POST /api/complaint-comments/save-complaintcomment` - Save comment
-- `POST /api/complaint-comments/update-complaintcomment/:id` - Update comment
+Admin routes are also checked against role permissions (e.g. `wallets.manage`).
 
-### Coupons
-- `GET /api/coupons/coupon-list` - Get coupon list
+**Language** - API messages are returned in English or Arabic. The language is picked from, in order: `?lang=ar|en`, the `x-lang` header, then `Accept-Language`.
 
-### Additional Fees
-- `GET /api/additional-fees/additional-fees-list` - Get additional fees
+**Response format**
 
-### Payment Gateways
-- `GET /api/payment-gateways/payment-gateway-list` - Get payment gateways
+```jsonc
+// success
+{ "success": true, "message": "Success", "data": { } }
 
-### Settings
-- `GET /api/settings/get-setting` - Get settings
-- `POST /api/settings/save-setting` - Save settings
-- `GET /api/settings/get-appsetting` - Get app settings
-- `POST /api/settings/update-appsetting` - Update app settings
+// paginated list
+{ "success": true, "message": "Success", "data": [ ], "pagination": { "page": 1, "limit": 20, "total": 120, "pages": 6 } }
 
-### Airports
-- `GET /api/airports/airport-list` - Get airport list
-- `POST /api/airports/airport-save` - Save airport
-- `POST /api/airports/airport-delete/:id` - Delete airport
-- `POST /api/airports/airport-action` - Airport action
+// error
+{ "success": false, "message": "Not found" }
+```
 
-### FAQs
-- `GET /api/faqs/faq-list` - Get FAQ list
+**List query parameters** (all CRUD list endpoints):
 
-### Cancellations
-- `GET /api/cancellations/cancelReason-list` - Get cancellation reasons
+| Param   | Example         | Notes                                 |
+| ------- | --------------- | ------------------------------------- |
+| `page`  | `1`             | default 1                             |
+| `limit` | `20`            | default 20, capped per module         |
+| `sort`  | `createdAt:desc`| `field:asc` or `field:desc`, default `id:desc` |
+| `q`     | `ahmed`         | text search on the module's searchable fields |
 
-### References
-- `GET /api/references/reference-list` - Get referral references
+Many modules also accept filters such as `userId`, `driverId`, `status`, etc.
 
-### Manage Zones
-- `GET /api/manage-zones/managezone-list` - Get zone list
-- `POST /api/manage-zones/managezone-save` - Save zone
-- `POST /api/manage-zones/managezone-delete/:id` - Delete zone
+## Endpoints overview
 
-### Utilities
-- `GET /api/utilities/near-by-driver` - Get nearby drivers
-- `GET /api/utilities/language-table-list` - Get language tables
-- `GET /api/utilities/place-autocomplete-api` - Google Places autocomplete
-- `GET /api/utilities/place-detail-api` - Google Places detail
-- `POST /api/utilities/snap-to-roads` - Google Roads snap to roads
+All routes are prefixed with `/api`. Full details are in Swagger at `/api/docs`.
 
-### Notifications
-- `POST /api/notifications/notification-list` - Get notifications
+### Public & auth
 
-## Database Schema
+| Method | Path                    | Description                 |
+| ------ | ----------------------- | --------------------------- |
+| POST   | `/register`             | Public registration         |
+| POST   | `/auth/login`           | Login (returns JWT)         |
+| POST   | `/auth/register`        | Register customer           |
+| POST   | `/auth/driver/register` | Register driver             |
+| GET    | `/auth/me`              | Current user profile        |
+| PATCH  | `/auth/me`              | Update profile              |
+| POST   | `/auth/me/password`     | Change password             |
+| POST   | `/auth/me/avatar`       | Upload avatar               |
+| GET    | `/public/branding`      | App branding (logo)         |
+| GET    | `/public/offers`        | Active coupons / offers     |
 
-The project uses Prisma ORM with MySQL. The schema includes:
+### Customer app - `/client`
 
-- **Users** - Riders, Drivers, Admins, Fleet
-- **RideRequests** - Ride booking and management
-- **Services** - Service types (Economy, Premium, etc.)
-- **Payments** - Payment transactions
-- **Wallets** - User wallets and transaction history
-- **Coupons** - Discount coupons
-- **Documents** - Driver documents
-- **DriverDocuments** - Driver document uploads
-- **Complaints** - User complaints
-- **ComplaintComments** - Complaint comments
-- **Ratings** - Ride ratings
-- **Bids** - Ride request bids
-- **SOS** - Emergency contacts
-- **WithdrawRequests** - Withdrawal requests
-- **Airports** - Airport locations
-- **FAQs** - Frequently asked questions
-- **Cancellations** - Cancellation reasons
-- **ManageZones** - Zone management
-- **ZonePrices** - Zone pricing
-- **SurgePrices** - Surge pricing
-- **AdditionalFees** - Additional fees
-- **PaymentGateways** - Payment gateway configurations
-- **Settings** - Application settings
-- **AppSettings** - App-specific settings
-- **Notifications** - User notifications
-- **Regions** - Service regions
-- **DriverServices** - Driver service associations
-- **Reviews** - User reviews
-- **CustomerSupport** - Customer support tickets
-- **SupportChathistory** - Support chat history
-- **PushNotifications** - Push notification records
+| Method | Path                                    | Description              |
+| ------ | --------------------------------------- | ------------------------ |
+| GET    | `/client/catalog`                       | Categories and products  |
+| GET    | `/client/products/:productId/variants`  | Product variants         |
+| POST   | `/client/guests`                        | Create guest customer    |
+| POST   | `/client/orders`                        | Place an order           |
+| GET    | `/client/orders`                        | My orders                |
+| GET    | `/client/orders/:id`                    | Order details            |
 
-See the Prisma schema folder `prisma/modules` (multi-file schema) for the complete schema definition.
-#   z a d w a y - a p i  
- 
+### Driver app - `/drivers/me`
+
+| Area        | Endpoints                                                              |
+| ----------- | ---------------------------------------------------------------------- |
+| Onboarding  | `GET /onboarding`                                                      |
+| Location    | `PATCH /location`                                                      |
+| Orders      | `GET /product-orders`, `GET /product-orders/:orderId`, `POST /product-orders/:orderId/offers`, `POST /product-orders/:orderId/claim`, `PATCH /product-orders/:orderId/status` |
+| Inventory   | `GET/POST /inventory`, `PATCH/DELETE /inventory/:id`                   |
+| Catalog     | `GET/POST /categories`, `PATCH/DELETE /categories/:id`, `GET/POST /products`, `GET/PATCH/DELETE /products/:id`, `POST /products/:id/variants` |
+| Finance     | `GET /wallet`, `GET/POST /withdrawals`, `GET /commissions`, `GET /reports` |
+| Media       | `POST /media`                                                          |
+
+### Admin panel
+
+Admin-only helpers:
+
+| Path                   | Description                                  |
+| ---------------------- | -------------------------------------------- |
+| `/admin/dashboard`     | Dashboard statistics                         |
+| `/admin/reports`       | Reports by date range (JSON, PDF, Excel)     |
+| `/admin/drivers`       | Driver approvals (onboarding review)         |
+| `/admin/settings`      | Platform settings (commission, ...)          |
+| `/admin/branding`      | Logo / branding                              |
+| `/admin/meta`          | Lookup data for the admin UI                 |
+
+Standard CRUD resources (`GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `DELETE /:id`):
+
+| Group          | Resources                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| Users & access | `users`, `roles`, `permissions`, `role-permissions`, `user-roles`, `user-addresses`, `user-bank-cards`, `user-details` |
+| Drivers        | `documents`, `driver-documents`, `driver-inventory-items`, `inventory-logs`                      |
+| Shop           | `categories`, `products`, `product-types`, `sizes`, `product-variants`, `coupons`, `banners`     |
+| Orders         | `product-orders`, `product-order-items`, `product-order-offers`, `product-order-location-updates`, `guest-customers`, `payments` |
+| Bookings/rides | `booking-invoices`, `booking-location-updates`, `ride-request-bids`, `ride-request-ratings`, `ride-request-histories` |
+| Finance        | `wallets`, `wallet-histories`, `withdraw-requests`                                               |
+| Support        | `customer-supports`, `support-chathistories`, `complaints`, `reviews`, `pages`, `sos`            |
+| Notifications  | `notifications`, `push-notifications`                                                            |
+| Security       | `admin-login-history`, `admin-login-devices`, `security-audit-logs`                              |
+
+Some resources have extra actions, for example:
+
+- `POST /wallets/user/:userId/credit` and `/debit` - adjust a wallet balance
+- `POST /withdraw-requests/:id/approve` and `/reject`
+- `POST /customer-supports/:id/messages` - admin reply on a ticket
+- `GET /customer-supports/stats`, `GET /admin-login-history/stats`
+
+## Realtime (WebSocket)
+
+Connect with a valid JWT:
+
+```text
+ws://localhost:3000/ws?token=<JWT>
+```
+
+Used for live order / driver location updates in the admin tracking page and the apps. Connections without a token are closed with code `1008`.
+
+## File uploads
+
+| Method | Path                  | Description     |
+| ------ | --------------------- | --------------- |
+| POST   | `/api/uploads/image`  | Upload an image |
+| POST   | `/api/uploads/video`  | Upload a video  |
+
+Files are stored in `uploads/` and served statically at `/uploads/...`.
+Size limits come from `UPLOAD_MAX_IMAGE_MB` and `UPLOAD_MAX_VIDEO_MB`.
+
+## Testing & Postman
+
+```bash
+npm test             # run all unit tests
+npm run test:watch   # watch mode
+```
+
+Postman collections and environments are in `postman/`:
+
+- `qarora.postman_collection.json` + `Qarora.Local.postman_environment.json` - admin / full API
+- `zadway-mobile.postman_collection.json` + `zadway-mobile.dev_environment.json` / `zadway-mobile.prod_environment.json` - mobile apps
