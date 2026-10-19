@@ -45,10 +45,10 @@ function normalizeVariantWrite(data) {
 }
 
 export async function list(q) {
-  const parsed = parseListQuery(q, { searchableFields: [] });
+  const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
   const where = { ...parsed.where };
-  if (q?.productId != null && String(q.productId).trim() !== "") {
-    where.productId = Number(q.productId);
+  for (const key of ["productId", "sizeId", "typeId"]) {
+    if (q?.[key] != null && String(q[key]).trim() !== "") where[key] = Number(q[key]);
   }
   const [items, total] = await Promise.all([
     prisma.productVariant.findMany({
@@ -56,14 +56,30 @@ export async function list(q) {
       skip: parsed.skip,
       take: parsed.take,
       orderBy: parsed.orderBy,
-      include: { size: true, type: true },
+      include: {
+        size: true,
+        type: true,
+        product: { select: { id: true, name: true, nameI18n: true, imageUrl: true, isActive: true } },
+      },
     }),
     prisma.productVariant.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
 }
 
-export const getById = (id) => svc.getById(id);
+export function getById(id) {
+  return prisma.productVariant.findUnique({
+    where: { id: Number(id) },
+    include: {
+      size: true,
+      type: true,
+      product: {
+        select: { id: true, name: true, nameI18n: true, imageUrl: true, images: true, isActive: true, categoryId: true },
+      },
+      _count: { select: { orderItems: true, driverInventoryItems: true, inventoryLogs: true } },
+    },
+  });
+}
 
 export function create(data) {
   return prisma.productVariant.create({ data: normalizeVariantWrite(data) });

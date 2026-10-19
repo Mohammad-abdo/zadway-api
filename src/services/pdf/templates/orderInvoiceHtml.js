@@ -234,10 +234,6 @@ table.lines tbody tr:nth-child(even) td { background: #F8FAFC; }
         <div>${esc(dict.subtotal)}</div>
         <div class="numeric">${esc(fmtMoney(order.subtotal, order.currency))}</div>
       </div>
-      <div class="row">
-        <div>${esc(dict.commission)}</div>
-        <div class="numeric">${esc(fmtMoney(order.commissionAmt, order.currency))}</div>
-      </div>
       <div class="row total">
         <div>${esc(dict.total)}</div>
         <div class="numeric">${esc(fmtMoney(order.total, order.currency))}</div>

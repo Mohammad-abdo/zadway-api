@@ -4,7 +4,15 @@ import { createCrudService } from "../../core/crud/genericCrudService.js";
 const svc = createCrudService("wallet", { searchableFields: [] });
 
 export const list = (q) => svc.list(q);
-export const getById = (id) => svc.getById(id);
+export function getById(id) {
+  return prisma.wallet.findUnique({
+    where: { id: Number(id) },
+    include: {
+      user: { select: { id: true, name: true, email: true, phone: true, userType: true, createdAt: true } },
+      _count: { select: { histories: true } },
+    },
+  });
+}
 export const create = (data) => svc.create(data);
 export const update = (id, data) => svc.update(id, data);
 export const remove = (id) => svc.remove(id);

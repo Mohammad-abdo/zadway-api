@@ -176,8 +176,9 @@ export async function create(data) {
     normalizedItems.reduce((sum, it) => sum + it.lineTotal, 0).toFixed(2),
   );
   const cPct = Number(commissionPct || 0);
+  // Commission is deducted from the captain's payout, not added to the customer's bill.
   const commissionAmt = Number(((subtotal * cPct) / 100).toFixed(2));
-  const total = Number((subtotal + commissionAmt).toFixed(2));
+  const total = subtotal;
 
   const initialStatus = status || "NEW";
   if (initialStatus === "DELIVERED") {

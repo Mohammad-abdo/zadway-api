@@ -1,10 +1,13 @@
 import prisma from "../../config/prisma.js";
 import {
+  DEFAULT_PLATFORM_COMMISSION_ENABLED,
   DEFAULT_PLATFORM_COMMISSION_PCT,
+  PLATFORM_COMMISSION_ENABLED_KEY,
   PLATFORM_COMMISSION_PCT_KEY,
 } from "./platform-settings.constants.js";
 
 /**
+ * Configured commission % (regardless of the on/off switch).
  * @returns {Promise<number>}
  */
 export async function getPlatformCommissionPct() {
@@ -18,28 +21,63 @@ export async function getPlatformCommissionPct() {
 }
 
 /**
- * @param {number} pct
- * @returns {Promise<{ commissionPct: number }>}
+ * @returns {Promise<boolean>}
  */
-export async function setPlatformCommissionPct(pct) {
-  const n = Number(pct);
-  if (!Number.isFinite(n) || n < 0 || n > 100) {
-    const e = new Error("commissionPct must be between 0 and 100");
-    e.statusCode = 400;
-    throw e;
-  }
-  const value = String(Number(n.toFixed(2)));
-  await prisma.adminSetting.upsert({
-    where: { key: PLATFORM_COMMISSION_PCT_KEY },
-    create: { key: PLATFORM_COMMISSION_PCT_KEY, value },
-    update: { value },
+export async function isPlatformCommissionEnabled() {
+  const row = await prisma.adminSetting.findUnique({
+    where: { key: PLATFORM_COMMISSION_ENABLED_KEY },
   });
-  return { commissionPct: Number(value) };
+  if (row?.value == null || row.value === "") return DEFAULT_PLATFORM_COMMISSION_ENABLED;
+  return ["1", "true", "yes", "on"].includes(String(row.value).toLowerCase());
 }
 
 /**
- * @returns {Promise<{ commissionPct: number }>}
+ * Commission % actually applied to new orders: 0 while the system is disabled.
+ * @returns {Promise<number>}
+ */
+export async function getEffectiveCommissionPct() {
+  if (!(await isPlatformCommissionEnabled())) return 0;
+  return getPlatformCommissionPct();
+}
+
+async function upsertSetting(key, value) {
+  await prisma.adminSetting.upsert({
+    where: { key },
+    create: { key, value },
+    update: { value },
+  });
+}
+
+/**
+ * @param {{ enabled?: boolean; commissionPct?: number }} input
+ */
+export async function updateCommissionSettings({ enabled, commissionPct } = {}) {
+  if (commissionPct !== undefined && commissionPct !== null) {
+    const n = Number(commissionPct);
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      const e = new Error("commissionPct must be between 0 and 100");
+      e.statusCode = 400;
+      throw e;
+    }
+    await upsertSetting(PLATFORM_COMMISSION_PCT_KEY, String(Number(n.toFixed(2))));
+  }
+  if (enabled !== undefined && enabled !== null) {
+    await upsertSetting(PLATFORM_COMMISSION_ENABLED_KEY, enabled ? "true" : "false");
+  }
+  return getPlatformSettings();
+}
+
+/**
+ * @returns {Promise<{ commissionEnabled: boolean; commissionPct: number; effectiveCommissionPct: number }>}
  */
 export async function getPlatformSettings() {
-  return { commissionPct: await getPlatformCommissionPct() };
+  const [commissionEnabled, commissionPct] = await Promise.all([
+    isPlatformCommissionEnabled(),
+    getPlatformCommissionPct(),
+  ]);
+  return {
+    commissionEnabled,
+    commissionPct,
+    effectiveCommissionPct: commissionEnabled ? commissionPct : 0,
+  };
 }

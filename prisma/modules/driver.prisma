@@ -20,6 +20,8 @@ model DriverDocument {
   driverId      Int       @map("driver_id")
   documentId    Int       @map("document_id")
   isVerified    Boolean   @default(false) @map("is_verified")
+  status        String    @default("pending") @db.VarChar(20)
+  rejectionReason String? @map("rejection_reason") @db.Text
   documentImage String?   @map("document_image") @db.Text
   expireDate    DateTime? @map("expire_date") @db.Date
   createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(6)

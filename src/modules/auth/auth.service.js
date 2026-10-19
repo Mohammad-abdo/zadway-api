@@ -11,7 +11,7 @@ function clampSelfRegisterableUserType(value) {
   return SELF_REGISTERABLE_USER_TYPES.includes(normalized) ? normalized : "rider";
 }
 
-function parsePhone(phone) {
+export function parsePhone(phone) {
   if (phone === undefined || phone === null || phone === "") return null;
   const raw = String(phone).trim();
   const digits = raw.replace(/\D/g, "");
@@ -34,7 +34,7 @@ function parsePhone(phone) {
   return Number.isNaN(n) ? null : n;
 }
 
-function parseCountryCode(phone) {
+export function parseCountryCode(phone) {
   if (phone === undefined || phone === null || phone === "") return "+1";
   const raw = String(phone).trim();
   if (!raw.startsWith("+")) return "+1";
@@ -42,7 +42,7 @@ function parseCountryCode(phone) {
   return m ? `+${m[1]}` : "+1";
 }
 
-function formatFullPhone(countryCode, phone) {
+export function formatFullPhone(countryCode, phone) {
   if (phone === undefined || phone === null) return null;
   const cc = (countryCode && String(countryCode).trim()) || "+1";
   const p = String(phone).replace(/\D/g, "");
@@ -82,10 +82,17 @@ export async function login({ email, phone, password }) {
       email: user.email,
       phone: formatFullPhone(user.countryCode, user.phone),
       avatar: user.avatar,
+      userType: user.userType,
+      status: user.status,
+      rejectionReason: user.rejectionReason,
     },
     accessToken,
     refreshToken,
   };
+}
+
+function initialStatusFor(userType) {
+  return userType === "driver" ? "pending" : "active";
 }
 
 export async function register(body) {
@@ -102,12 +109,13 @@ export async function register(body) {
   }
   const hashed = await bcrypt.hash(password, 10);
   const p = parsePhone(phone);
+  const resolvedType = clampSelfRegisterableUserType(userType);
   const data = {
     email: email ? String(email).trim() : null,
     password: hashed,
     name: name ?? null,
-    userType: clampSelfRegisterableUserType(userType),
-    status: "active",
+    userType: resolvedType,
+    status: initialStatusFor(resolvedType),
     phone: p,
   };
   const user = await prisma.user.create({ data });
@@ -131,6 +139,8 @@ export async function me(userId) {
       phone: true,
       userType: true,
       status: true,
+      isVerified: true,
+      rejectionReason: true,
       displayName: true,
       avatar: true,
       createdAt: true,
@@ -290,7 +300,7 @@ export async function publicRegister(body) {
       countryCode,
       password: hashed,
       userType,
-      status: "active",
+      status: initialStatusFor(userType),
       avatar: avatar ?? null,
     },
     select: {

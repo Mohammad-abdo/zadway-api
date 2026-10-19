@@ -13,7 +13,10 @@ export async function getSettings(req, res) {
 
 export async function updateCommission(req, res) {
   try {
-    const data = await service.setPlatformCommissionPct(req.body?.commissionPct);
+    const data = await service.updateCommissionSettings({
+      enabled: req.body?.enabled,
+      commissionPct: req.body?.commissionPct,
+    });
     return successResponse(res, data, t("common.updated", req.locale));
   } catch (e) {
     return errorResponse(res, e.message, e.statusCode || 500);

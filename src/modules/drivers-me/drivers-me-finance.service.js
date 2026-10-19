@@ -1,5 +1,5 @@
 import prisma from "../../config/prisma.js";
-import { getPlatformCommissionPct } from "../platform-settings/platform-settings.service.js";
+import { getEffectiveCommissionPct } from "../platform-settings/platform-settings.service.js";
 import * as walletsService from "../wallets/wallets.service.js";
 
 async function ensureWallet(userId, currency = "IQD") {
@@ -107,7 +107,7 @@ export async function createMyWithdrawal(driverId, body) {
 }
 
 export async function getMyCommissions(driverId) {
-  const platformCommissionPct = await getPlatformCommissionPct();
+  const platformCommissionPct = await getEffectiveCommissionPct();
   const delivered = await prisma.productOrder.findMany({
     where: { driverId: Number(driverId), status: "DELIVERED" },
     select: {

@@ -5,10 +5,13 @@ import { parseListQuery } from "../../core/utils/pagination.js";
 const svc = createCrudService("productOrderItem", { searchableFields: [] });
 
 export async function list(q) {
-  const parsed = parseListQuery(q, { searchableFields: [] });
+  const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
   const where = { ...parsed.where };
   if (q?.orderId != null && String(q.orderId).trim() !== "") {
     where.orderId = Number(q.orderId);
+  }
+  if (q?.variantId != null && String(q.variantId).trim() !== "") {
+    where.variantId = Number(q.variantId);
   }
   const [items, total] = await Promise.all([
     prisma.productOrderItem.findMany({

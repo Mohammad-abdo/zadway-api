@@ -1,7 +1,9 @@
 import { Router } from "express";
 import multer from "multer";
 import authenticate from "../../core/middlewares/auth.middleware.js";
-import requireDriver from "../../core/middlewares/requireDriver.middleware.js";
+import requireDriver, { requireDriverAccount } from "../../core/middlewares/requireDriver.middleware.js";
+import * as onboardingCtrl from "../driver-onboarding/driver-onboarding.controller.js";
+import { driverDocumentsUpload } from "../driver-onboarding/driver-onboarding.upload.js";
 import { validate } from "../../core/middlewares/validate.middleware.js";
 import { errorResponse } from "../../core/utils/serverResponse.js";
 import { t } from "../../core/i18n/index.js";
@@ -10,7 +12,18 @@ import * as v from "./drivers-me.validator.js";
 
 const r = Router();
 
-r.use(authenticate, requireDriver);
+r.use(authenticate);
+
+// Available to pending / rejected captains so they can finish onboarding.
+r.get("/me/onboarding", requireDriverAccount, onboardingCtrl.getOnboarding);
+r.put(
+  "/me/onboarding/documents",
+  requireDriverAccount,
+  driverDocumentsUpload,
+  onboardingCtrl.resubmitDocuments,
+);
+
+r.use(requireDriver);
 
 const memory = multer.memoryStorage();
 const maxImageBytes = (Number(process.env.UPLOAD_MAX_IMAGE_MB) || 12) * 1024 * 1024;

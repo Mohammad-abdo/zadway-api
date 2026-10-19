@@ -17,15 +17,19 @@ const includeDetail = {
 
 export async function list(q) {
   const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
+  const where = { ...parsed.where };
+  for (const key of ["driverId", "variantId"]) {
+    if (q?.[key] != null && String(q[key]).trim() !== "") where[key] = Number(q[key]);
+  }
   const [items, total] = await Promise.all([
     prisma.driverInventoryItem.findMany({
-      where: parsed.where,
+      where,
       skip: parsed.skip,
       take: parsed.take,
       orderBy: parsed.orderBy,
       include: includeDetail,
     }),
-    prisma.driverInventoryItem.count({ where: parsed.where }),
+    prisma.driverInventoryItem.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
 }

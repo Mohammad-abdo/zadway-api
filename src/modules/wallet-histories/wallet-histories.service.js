@@ -11,16 +11,23 @@ const include = {
 };
 
 export async function list(q) {
-  const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
+  const parsed = parseListQuery(q, { searchableFields: ["description"], maxLimit: 500 });
+  const where = { ...parsed.where };
+  for (const key of ["walletId", "userId"]) {
+    if (q?.[key] != null && String(q[key]).trim() !== "") where[key] = Number(q[key]);
+  }
+  for (const key of ["type", "transactionType"]) {
+    if (typeof q?.[key] === "string" && q[key].trim()) where[key] = q[key].trim();
+  }
   const [items, total] = await Promise.all([
     prisma.walletHistory.findMany({
-      where: parsed.where,
+      where,
       skip: parsed.skip,
       take: parsed.take,
       orderBy: parsed.orderBy,
       include,
     }),
-    prisma.walletHistory.count({ where: parsed.where }),
+    prisma.walletHistory.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
 }

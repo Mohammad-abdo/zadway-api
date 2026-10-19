@@ -1,5 +1,5 @@
 import prisma from "../../config/prisma.js";
-import { getPlatformCommissionPct } from "../platform-settings/platform-settings.service.js";
+import { getEffectiveCommissionPct } from "../platform-settings/platform-settings.service.js";
 
 function i18nPayload(name, nameAr) {
   const base = {};
@@ -513,7 +513,7 @@ export async function removeMyProductVariant(driverId, productId, variantId) {
 // ─── Reports / accounts ─────────────────────────────────────────────────────
 
 export async function getMyReports(driverId) {
-  const commissionPct = await getPlatformCommissionPct();
+  const commissionPct = await getEffectiveCommissionPct();
   const delivered = await prisma.productOrder.findMany({
     where: { driverId: Number(driverId), status: "DELIVERED" },
     select: {

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { DRIVER_DOCUMENT_TYPES } from "../src/modules/driver-onboarding/driver-onboarding.constants.js";
 
 /** Unsplash CDN — water / packaging / delivery photos for catalog & banners */
 const SEED_IMAGES = {
@@ -504,10 +505,30 @@ async function main() {
         driverId: d.user.id,
         documentId: docLicense.id,
         isVerified: true,
+        status: "approved",
         documentImage: SEED_IMAGES.driverLicenseSample,
         expireDate: new Date(new Date().getFullYear() + 1, 0, 1),
       },
     );
+  }
+
+  // Captain signup document catalog (driving license reuses the row above via alias).
+  for (const def of DRIVER_DOCUMENT_TYPES) {
+    const existing = await prisma.document.findFirst({
+      where: { type: { in: [def.type, ...(def.aliases || [])] } },
+      orderBy: { id: "asc" },
+    });
+    const data = {
+      name: def.name,
+      nameAr: def.nameAr,
+      nameI18n: { en: def.name, ar: def.nameAr },
+      type: def.type,
+      isRequired: def.isRequired,
+      hasExpiryDate: Boolean(def.hasExpiryDate),
+      status: 1,
+    };
+    if (existing) await prisma.document.update({ where: { id: existing.id }, data });
+    else await prisma.document.create({ data });
   }
 
   // ---- Addresses / Cards ----

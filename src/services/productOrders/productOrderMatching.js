@@ -115,7 +115,7 @@ export async function findEligibleDriversSorted(db, items, dropoffLat, dropoffLn
   const maxCand = Number(process.env.PRODUCT_ORDER_MAX_CANDIDATES ?? DEFAULT_MAX_CANDIDATES);
 
   const users = await db.user.findMany({
-    where: { id: { in: [...candidateIds] }, userType: "driver" },
+    where: { id: { in: [...candidateIds] }, userType: "driver", status: "active" },
     select: { id: true, latitude: true, longitude: true },
   });
 

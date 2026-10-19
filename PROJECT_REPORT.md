@@ -1160,4 +1160,39 @@ withdraw_requests.manage / .view
 
 ---
 
+## ملحق: اعتماد القادة (الكباتن) ونظام العمولة
+
+### تسجيل القائد والمراجعة
+- التسجيل: `POST /auth/driver/register` (multipart) — ينشئ الحساب بحالة `pending` مع `UserDetail` (بيانات السيارة) و`DriverDocument` لكل وثيقة.
+- الأوراق المطلوبة: `national_id_front`, `national_id_back`, `driving_license`, `vehicle_registration`. اختياري: `commercial_register`, `car_image`.
+- أنواع الوثائق تُنشأ تلقائياً عند أول استخدام (`ensureDriverDocumentTypes`) وفي الـ seed.
+- حالة القائد في `users.status`: `pending` → `active` (قبول) أو `rejected` (رفض مع سبب في `rejection_reason`).
+- حالة كل وثيقة في `driver_documents.status` (`pending` / `approved` / `rejected`) مع `rejection_reason`.
+- `requireDriver` يمنع أي قائد غير `active` من مسارات `/drivers/me/*` ويرجع `403` مع `code: "driver_not_approved"`، باستثناء:
+  - `GET /drivers/me/onboarding` — الحالة والأوراق.
+  - `PUT /drivers/me/onboarding/documents` — إعادة رفع الأوراق (يعيد الحساب إلى `pending`).
+- مطابقة الطلبات (`productOrderMatching.js`) تستبعد القادة غير المعتمدين.
+
+### لوحة التحكم
+- صفحة `/driver-approvals` (مجموعة القادة) مع عدّاد للطلبات المعلقة في القائمة الجانبية.
+- مسارات الإدارة (صلاحية `users.manage` أو `driver_documents.manage`):
+  - `GET /admin/drivers/review?status=pending|rejected|active|all`
+  - `GET /admin/drivers/review/pending-count`
+  - `GET /admin/drivers/:id/review`
+  - `POST /admin/drivers/:id/approve`
+  - `POST /admin/drivers/:id/reject` — `{ reason, documentIds? }`
+  - `PATCH /admin/drivers/:id/documents/:documentId` — `{ status, reason? }`
+- يصل للقائد إشعار داخل التطبيق عند القبول أو الرفض.
+
+### نظام العمولة
+- إعدادان في `AdminSetting`: `platform_commission_enabled` (افتراضياً `false` = مجاني) و`platform_commission_pct`.
+- `getEffectiveCommissionPct()` يرجع `0` عند إيقاف النظام؛ تُحفظ النسبة على كل طلب عند إنشائه فلا يؤثر التغيير على الطلبات السابقة.
+- العمولة تُخصم من مستحقات القائد فقط: `total = subtotal` للعميل، وصافي القائد = `subtotal - commissionAmt`.
+- `GET /admin/settings` و`PUT /admin/settings/commission` — `{ enabled, commissionPct }`.
+
+### الترحيل
+- `prisma/modules/migrations/20261018120000_driver_onboarding_review/migration.sql` — يضيف أعمدة المراجعة ويُبقي القادة الحاليين مفعّلين.
+
+---
+
 *نهاية التقرير — تم إنشاؤه آلياً من تحليل الكود المصدري الكامل للمشروع.*

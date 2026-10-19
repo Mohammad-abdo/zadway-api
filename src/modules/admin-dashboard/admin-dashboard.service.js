@@ -60,6 +60,19 @@ function buildSeries(startInclusive, days, byDay) {
   return out;
 }
 
+async function runLimited(thunks, limit) {
+  const out = new Array(thunks.length);
+  let next = 0;
+  async function worker() {
+    while (next < thunks.length) {
+      const i = next++;
+      out[i] = await thunks[i]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, thunks.length) }, worker));
+  return out;
+}
+
 async function countRange(model, whereBase, from, toExclusive) {
   return model.count({
     where: {
@@ -108,98 +121,94 @@ export async function getDashboardStats(permissionNames) {
   const seriesDays = 14;
   const seriesStart = startOfDayUtc(addDaysUtc(now, -(seriesDays - 1)));
 
+  /** Thunks, run with bounded concurrency so one request cannot exhaust the DB pool. */
   const jobs = [];
+  const add = (...fns) => jobs.push(...fns);
+  const none = () => null;
 
   if (pu) {
-    jobs.push(
-      prisma.user.count(),
-      prisma.user.count({ where: { userType: "driver" } }),
-      countRange(prisma.user, {}, curStart, null),
-      countRange(prisma.user, {}, prevStart, prevEnd),
-      countRange(prisma.user, { userType: "driver" }, curStart, null),
-      countRange(prisma.user, { userType: "driver" }, prevStart, prevEnd)
+    add(
+      () => prisma.user.count(),
+      () => prisma.user.count({ where: { userType: "driver" } }),
+      () => countRange(prisma.user, {}, curStart, null),
+      () => countRange(prisma.user, {}, prevStart, prevEnd),
+      () => countRange(prisma.user, { userType: "driver" }, curStart, null),
+      () => countRange(prisma.user, { userType: "driver" }, prevStart, prevEnd)
     );
   } else {
-    jobs.push(
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null)
+    add(
+      none,
+      none,
+      none,
+      none,
+      none,
+      none
     );
   }
 
   if (pp) {
-    jobs.push(
-      prisma.product.count(),
-      countRange(prisma.product, {}, curStart, null),
-      countRange(prisma.product, {}, prevStart, prevEnd)
+    add(
+      () => prisma.product.count(),
+      () => countRange(prisma.product, {}, curStart, null),
+      () => countRange(prisma.product, {}, prevStart, prevEnd)
     );
   } else {
-    jobs.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
+    add(none, none, none);
   }
 
   if (po) {
-    jobs.push(
-      prisma.productOrder.count(),
-      prisma.productOrder.aggregate({ _sum: { total: true } }),
-      countRange(prisma.productOrder, {}, curStart, null),
-      countRange(prisma.productOrder, {}, prevStart, prevEnd),
-      sumOrderTotalRange(curStart, null),
-      sumOrderTotalRange(prevStart, prevEnd)
+    add(
+      () => prisma.productOrder.count(),
+      () => prisma.productOrder.aggregate({ _sum: { total: true } }),
+      () => countRange(prisma.productOrder, {}, curStart, null),
+      () => countRange(prisma.productOrder, {}, prevStart, prevEnd),
+      () => sumOrderTotalRange(curStart, null),
+      () => sumOrderTotalRange(prevStart, prevEnd)
     );
   } else {
-    jobs.push(
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null),
-      Promise.resolve(null)
+    add(
+      none,
+      none,
+      none,
+      none,
+      none,
+      none
     );
   }
 
   if (pr) {
-    jobs.push(
-      prisma.rideRequestBid.count(),
-      countRange(prisma.rideRequestBid, {}, curStart, null),
-      countRange(prisma.rideRequestBid, {}, prevStart, prevEnd)
+    add(
+      () => prisma.rideRequestBid.count(),
+      () => countRange(prisma.rideRequestBid, {}, curStart, null),
+      () => countRange(prisma.rideRequestBid, {}, prevStart, prevEnd)
     );
   } else {
-    jobs.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
+    add(none, none, none);
   }
 
   if (pc) {
-    jobs.push(
-      prisma.complaint.count(),
-      countRange(prisma.complaint, {}, curStart, null),
-      countRange(prisma.complaint, {}, prevStart, prevEnd)
+    add(
+      () => prisma.complaint.count(),
+      () => countRange(prisma.complaint, {}, curStart, null),
+      () => countRange(prisma.complaint, {}, prevStart, prevEnd)
     );
   } else {
-    jobs.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
+    add(none, none, none);
   }
 
-  let supportCountPromise = Promise.resolve(null);
-  let supportCurPromise = Promise.resolve(null);
-  let supportPrevPromise = Promise.resolve(null);
   if (ps) {
-    supportCountPromise = Promise.all([
-      prisma.customerSupport.count().catch(() => 0),
-      prisma.withdrawRequest.count().catch(() => 0),
-    ]).then(([a, b]) => a + b);
-    supportCurPromise = Promise.all([
-      countRange(prisma.customerSupport, {}, curStart, null),
-      countRange(prisma.withdrawRequest, {}, curStart, null),
-    ]).then(([a, b]) => a + b);
-    supportPrevPromise = Promise.all([
-      countRange(prisma.customerSupport, {}, prevStart, prevEnd),
-      countRange(prisma.withdrawRequest, {}, prevStart, prevEnd),
-    ]).then(([a, b]) => a + b);
+    add(
+      async () => (await prisma.customerSupport.count().catch(() => 0)) + (await prisma.withdrawRequest.count().catch(() => 0)),
+      async () =>
+        (await countRange(prisma.customerSupport, {}, curStart, null)) + (await countRange(prisma.withdrawRequest, {}, curStart, null)),
+      async () =>
+        (await countRange(prisma.customerSupport, {}, prevStart, prevEnd)) + (await countRange(prisma.withdrawRequest, {}, prevStart, prevEnd))
+    );
+  } else {
+    add(none, none, none);
   }
-  jobs.push(supportCountPromise, supportCurPromise, supportPrevPromise);
 
-  const resolved = await Promise.all(jobs);
+  const resolved = await runLimited(jobs, 4);
 
   let i = 0;
   const usersTotal = resolved[i++];

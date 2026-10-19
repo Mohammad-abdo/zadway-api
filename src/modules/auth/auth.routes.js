@@ -5,6 +5,8 @@ import { validate } from "../../core/middlewares/validate.middleware.js";
 import authenticate from "../../core/middlewares/auth.middleware.js";
 import { errorResponse } from "../../core/utils/serverResponse.js";
 import * as v from "./auth.validator.js";
+import * as onboardingCtrl from "../driver-onboarding/driver-onboarding.controller.js";
+import { driverDocumentsUpload } from "../driver-onboarding/driver-onboarding.upload.js";
 
 const r = Router();
 
@@ -24,6 +26,7 @@ function wrapMulter(mw) {
 
 r.post("/login", validate(v.loginSchema), ctrl.login);
 r.post("/register", validate(v.registerSchema), ctrl.register);
+r.post("/driver/register", driverDocumentsUpload, onboardingCtrl.registerDriver);
 r.get("/me", authenticate, ctrl.me);
 r.patch("/me", authenticate, validate(v.updateMeSchema), ctrl.updateMe);
 r.post("/me/password", authenticate, validate(v.changePasswordSchema), ctrl.changePassword);

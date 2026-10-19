@@ -1,7 +1,7 @@
 import prisma from "../../config/prisma.js";
 import { parseListQuery } from "../../core/utils/pagination.js";
 import * as productOrdersService from "../product-orders/product-orders.service.js";
-import { getPlatformCommissionPct } from "../platform-settings/platform-settings.service.js";
+import { getEffectiveCommissionPct } from "../platform-settings/platform-settings.service.js";
 import {
   enrichCatalogVariant,
   enrichOrderLineItem,
@@ -153,7 +153,7 @@ export async function createClientOrder(body, riderUser) {
 
   const status = payload.status === "PENDING" || payload.status === "NEW" ? payload.status : "NEW";
   // Mobile clients cannot set commission — platform rate from admin settings.
-  const commissionPct = await getPlatformCommissionPct();
+  const commissionPct = await getEffectiveCommissionPct();
 
   const order = await productOrdersService.create({
     ...payload,

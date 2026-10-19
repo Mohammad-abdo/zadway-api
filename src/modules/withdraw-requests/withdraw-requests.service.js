@@ -8,15 +8,18 @@ const include = { user: { select: { id: true, name: true, email: true, phone: tr
 
 export async function list(q) {
   const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
+  const where = { ...parsed.where };
+  if (q?.userId != null && String(q.userId).trim() !== "") where.userId = Number(q.userId);
+  if (q?.status != null && String(q.status).trim() !== "") where.status = Number(q.status);
   const [items, total] = await Promise.all([
     prisma.withdrawRequest.findMany({
-      where: parsed.where,
+      where,
       skip: parsed.skip,
       take: parsed.take,
       orderBy: parsed.orderBy,
       include,
     }),
-    prisma.withdrawRequest.count({ where: parsed.where }),
+    prisma.withdrawRequest.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
 }
