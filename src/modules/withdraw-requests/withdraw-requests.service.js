@@ -4,13 +4,19 @@ import { parseListQuery } from "../../core/utils/pagination.js";
 
 const svc = createCrudService("withdrawRequest", { searchableFields: [] });
 
-const include = { user: { select: { id: true, name: true, email: true, phone: true } } };
+const include = { user: { select: { id: true, name: true, email: true, phone: true, userType: true } } };
 
 export async function list(q) {
   const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
   const where = { ...parsed.where };
   if (q?.userId != null && String(q.userId).trim() !== "") where.userId = Number(q.userId);
   if (q?.status != null && String(q.status).trim() !== "") where.status = Number(q.status);
+  const term = typeof q?.q === "string" ? q.q.trim() : "";
+  if (term) {
+    const or = [{ user: { is: { name: { contains: term } } } }, { user: { is: { phone: { contains: term } } } }, { user: { is: { email: { contains: term } } } }];
+    if (/^\d+$/.test(term)) or.push({ id: Number(term) });
+    where.OR = or;
+  }
   const [items, total] = await Promise.all([
     prisma.withdrawRequest.findMany({
       where,
@@ -22,6 +28,30 @@ export async function list(q) {
     prisma.withdrawRequest.count({ where }),
   ]);
   return { items, total, page: parsed.page, limit: parsed.limit };
+}
+
+export async function stats() {
+  const rows = await prisma.withdrawRequest.groupBy({ by: ["status"], _count: { _all: true }, _sum: { amount: true } });
+  const out = {
+    pending: { count: 0, amount: 0 },
+    approved: { count: 0, amount: 0 },
+    rejected: { count: 0, amount: 0 },
+    total: { count: 0, amount: 0 },
+  };
+  const keys = { 0: "pending", 1: "approved", 2: "rejected" };
+  for (const r of rows) {
+    const count = r._count?._all ?? 0;
+    const amount = Number(r._sum?.amount || 0);
+    const key = keys[r.status];
+    if (key) {
+      out[key].count += count;
+      out[key].amount += amount;
+    }
+    out.total.count += count;
+    out.total.amount += amount;
+  }
+  for (const k of Object.keys(out)) out[k].amount = Math.round(out[k].amount * 100) / 100;
+  return out;
 }
 
 export async function getById(id) {
@@ -44,7 +74,8 @@ export async function approve(id) {
       e.statusCode = 404;
       throw e;
     }
-    if (wr.status !== 0) {
+    const claimed = await tx.withdrawRequest.updateMany({ where: { id: wrId, status: 0 }, data: { status: 1 } });
+    if (claimed.count !== 1) {
       const e = new Error("withdraw request has already been processed");
       e.statusCode = 409;
       throw e;
@@ -56,14 +87,17 @@ export async function approve(id) {
       e.statusCode = 404;
       throw e;
     }
-    if (wallet.balance < wr.amount) {
+    const debited = await tx.wallet.updateMany({
+      where: { id: wallet.id, balance: { gte: wr.amount } },
+      data: { balance: { decrement: wr.amount } },
+    });
+    if (debited.count !== 1) {
       const e = new Error("insufficient wallet balance for this withdraw request");
       e.statusCode = 400;
       throw e;
     }
 
-    const newBalance = wallet.balance - wr.amount;
-    await tx.wallet.update({ where: { id: wallet.id }, data: { balance: newBalance } });
+    const { balance: newBalance } = await tx.wallet.findUnique({ where: { id: wallet.id }, select: { balance: true } });
     await tx.walletHistory.create({
       data: {
         walletId: wallet.id,
@@ -76,10 +110,7 @@ export async function approve(id) {
       },
     });
 
-    return tx.withdrawRequest.update({
-      where: { id: wrId },
-      data: { status: 1 },
-    });
+    return tx.withdrawRequest.findUnique({ where: { id: wrId } });
   });
 }
 
@@ -92,14 +123,12 @@ export async function reject(id) {
       e.statusCode = 404;
       throw e;
     }
-    if (wr.status !== 0) {
+    const claimed = await tx.withdrawRequest.updateMany({ where: { id: wrId, status: 0 }, data: { status: 2 } });
+    if (claimed.count !== 1) {
       const e = new Error("withdraw request has already been processed");
       e.statusCode = 409;
       throw e;
     }
-    return tx.withdrawRequest.update({
-      where: { id: wrId },
-      data: { status: 2 },
-    });
+    return tx.withdrawRequest.findUnique({ where: { id: wrId } });
   });
 }

@@ -9,6 +9,7 @@ const r = Router();
 const PERM = "withdraw_requests.manage";
 
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
+r.get("/stats", authenticate, requireResourceAccess(PERM), ctrl.stats);
 r.post(
   "/:id/approve",
   authenticate,

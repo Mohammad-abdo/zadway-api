@@ -1,9 +1,78 @@
 import prisma from "../../config/prisma.js";
 import { createCrudService } from "../../core/crud/genericCrudService.js";
+import { parseListQuery } from "../../core/utils/pagination.js";
 
 const svc = createCrudService("wallet", { searchableFields: [] });
 
-export const list = (q) => svc.list(q);
+const listInclude = {
+  user: { select: { id: true, name: true, email: true, phone: true, userType: true } },
+  _count: { select: { histories: true } },
+};
+
+const hasValue = (v) => v != null && String(v).trim() !== "";
+
+function buildListWhere(q = {}) {
+  const where = {};
+  if (hasValue(q.userId)) where.userId = Number(q.userId);
+
+  const userWhere = {};
+  if (hasValue(q.userType)) userWhere.userType = String(q.userType).trim();
+  const term = typeof q.q === "string" ? q.q.trim() : "";
+  if (term) {
+    userWhere.OR = [{ name: { contains: term } }, { phone: { contains: term } }, { email: { contains: term } }];
+  }
+  if (Object.keys(userWhere).length) where.user = { is: userWhere };
+
+  const balance = {};
+  if (hasValue(q.minBalance) && Number.isFinite(Number(q.minBalance))) balance.gte = Number(q.minBalance);
+  if (hasValue(q.maxBalance) && Number.isFinite(Number(q.maxBalance))) balance.lte = Number(q.maxBalance);
+  const state = hasValue(q.balanceState) ? String(q.balanceState).trim() : "";
+  if (state === "positive") balance.gt = 0;
+  else if (state === "zero") balance.equals = 0;
+  else if (state === "negative") balance.lt = 0;
+  if (Object.keys(balance).length) where.balance = balance;
+
+  return where;
+}
+
+export async function list(q = {}) {
+  const parsed = parseListQuery(q, { searchableFields: [], maxLimit: 500 });
+  const where = buildListWhere(q);
+  const [items, total] = await Promise.all([
+    prisma.wallet.findMany({ where, skip: parsed.skip, take: parsed.take, orderBy: parsed.orderBy, include: listInclude }),
+    prisma.wallet.count({ where }),
+  ]);
+  return { items, total, page: parsed.page, limit: parsed.limit };
+}
+
+export async function stats() {
+  const [agg, zeroCount, positiveCount, negativeCount, byTypeRows] = await Promise.all([
+    prisma.wallet.aggregate({ _sum: { balance: true }, _avg: { balance: true }, _max: { balance: true }, _count: { _all: true } }),
+    prisma.wallet.count({ where: { balance: 0 } }),
+    prisma.wallet.count({ where: { balance: { gt: 0 } } }),
+    prisma.wallet.count({ where: { balance: { lt: 0 } } }),
+    prisma.$queryRaw`
+      SELECT u.user_type AS userType, COUNT(w.id) AS count, COALESCE(SUM(w.balance), 0) AS total
+      FROM wallets w LEFT JOIN users u ON u.id = w.user_id
+      GROUP BY u.user_type
+    `,
+  ]);
+  const byUserType = (byTypeRows || []).map((r) => ({
+    userType: r.userType ?? null,
+    count: Number(r.count || 0),
+    total: Math.round(Number(r.total || 0) * 100) / 100,
+  }));
+  return {
+    walletsCount: agg._count?._all ?? 0,
+    totalBalance: Math.round(Number(agg._sum?.balance || 0) * 100) / 100,
+    avgBalance: Math.round(Number(agg._avg?.balance || 0) * 100) / 100,
+    maxBalance: Number(agg._max?.balance || 0),
+    zeroCount,
+    positiveCount,
+    negativeCount,
+    byUserType,
+  };
+}
 export function getById(id) {
   return prisma.wallet.findUnique({
     where: { id: Number(id) },

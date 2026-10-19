@@ -9,6 +9,7 @@ const r = Router();
 const PERM = "payments.manage";
 
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
+r.get("/stats", authenticate, requireResourceAccess(PERM), validate(v.statsQuerySchema), ctrl.stats);
 r.get("/:id", authenticate, requireResourceAccess(PERM), validate(v.idParamSchema), ctrl.getById);
 r.post("/", authenticate, requirePermission([PERM]), validate(v.createSchema), ctrl.create);
 r.patch("/:id", authenticate, requirePermission([PERM]), validate(v.updateSchema), ctrl.update);

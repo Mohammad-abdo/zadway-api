@@ -5,8 +5,8 @@ import { parseListQuery } from "../../core/utils/pagination.js";
 const svc = createCrudService("walletHistory", { searchableFields: [] });
 
 const include = {
-  wallet: { select: { id: true, currency: true } },
-  user: { select: { id: true, name: true, email: true, phone: true } },
+  wallet: { select: { id: true, currency: true, balance: true, userId: true } },
+  user: { select: { id: true, name: true, email: true, phone: true, userType: true } },
   ProductOrder: { select: { id: true, status: true, total: true, currency: true } },
 };
 
