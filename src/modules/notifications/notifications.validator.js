@@ -15,6 +15,21 @@ export const listQuerySchema = z.object({
     .passthrough(),
 });
 
+export const adminMarkReadSchema = z.object({
+  body: z
+    .object({
+      ids: z.array(z.coerce.number().int().positive()).max(1000).optional(),
+      isRead: z.boolean().optional(),
+      userId: z.coerce.number().int().positive().optional(),
+      type: z.string().optional(),
+      category: z.string().optional(),
+      q: z.string().optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    })
+    .default({}),
+});
+
 const adminNotificationFields = z.object({
   userId: z.coerce.number().int().positive().optional(),
   notifiableId: z.coerce.number().int().positive().optional(),

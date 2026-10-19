@@ -11,6 +11,18 @@ export const listQuerySchema = z.object({
       limit: z.coerce.number().optional(),
       sort: z.string().optional(),
       q: z.string().optional(),
+      audience: z.string().optional(),
+      target: z.string().optional(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    })
+    .passthrough(),
+});
+
+export const statsQuerySchema = z.object({
+  query: z
+    .object({
+      days: z.coerce.number().int().min(1).max(90).optional(),
     })
     .passthrough(),
 });

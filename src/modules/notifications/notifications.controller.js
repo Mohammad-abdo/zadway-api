@@ -13,6 +13,24 @@ export async function list(req, res) {
   }
 }
 
+export async function stats(req, res) {
+  try {
+    const data = await service.stats(req.query);
+    return successResponse(res, data, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
+export async function adminMarkRead(req, res) {
+  try {
+    const result = await service.adminMarkRead(req.body || {});
+    return successResponse(res, result, t("common.updated", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
 export async function listMine(req, res) {
   try {
     const { items, total, page, limit } = await service.listMine(req.user.id, req.query);
