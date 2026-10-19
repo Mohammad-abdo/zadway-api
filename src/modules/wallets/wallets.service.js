@@ -17,9 +17,19 @@ export const create = (data) => svc.create(data);
 export const update = (id, data) => svc.update(id, data);
 export const remove = (id) => svc.remove(id);
 
-/** Adjust wallet balance by userId (unique wallet per user). */
+/**
+ * Adjust wallet balance by userId (unique wallet per user).
+ *
+ * Uses a raw conditional UPDATE instead of read-balance-then-write so the
+ * check and the write happen as one atomic statement at the database level.
+ * A plain `findUnique` + compute-in-JS + `update` has a lost-update race:
+ * two concurrent debits can both read the same stale balance, both pass the
+ * `>= 0` check against that stale value, and both commit, letting the
+ * balance go negative / letting a driver withdraw more than they have.
+ */
 export async function adjustByUserId(userId, deltaAmount, opts = {}) {
   const uid = Number(userId);
+  const delta = Number(deltaAmount);
   return prisma.$transaction(async (tx) => {
     const w = await tx.wallet.findUnique({ where: { userId: uid } });
     if (!w) {
@@ -27,26 +37,29 @@ export async function adjustByUserId(userId, deltaAmount, opts = {}) {
       e.statusCode = 404;
       throw e;
     }
-    const newBal = w.balance + deltaAmount;
-    if (newBal < 0) {
+    const affected = await tx.$executeRaw`
+      UPDATE wallets SET balance = ROUND(balance + ${delta}, 2)
+      WHERE id = ${w.id} AND balance + ${delta} >= 0
+    `;
+    if (affected === 0) {
       const e = new Error("insufficient wallet balance");
       e.statusCode = 400;
       throw e;
     }
-    await tx.wallet.update({ where: { id: w.id }, data: { balance: newBal } });
+    const updated = await tx.wallet.findUnique({ where: { id: w.id } });
     await tx.walletHistory.create({
       data: {
         walletId: w.id,
         userId: uid,
         ProductOrderId: opts.productOrderId ?? null,
-        type: opts.type ?? (deltaAmount >= 0 ? "credit" : "debit"),
-        amount: Math.abs(deltaAmount),
-        balance: newBal,
+        type: opts.type ?? (delta >= 0 ? "credit" : "debit"),
+        amount: Math.abs(delta),
+        balance: updated.balance,
         description: opts.description ?? null,
         transactionType: opts.transactionType ?? "adjustment",
       },
     });
-    return tx.wallet.findUnique({ where: { id: w.id } });
+    return updated;
   });
 }
 

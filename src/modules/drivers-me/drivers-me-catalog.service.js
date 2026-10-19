@@ -206,6 +206,15 @@ export async function updateMyCategory(driverId, id, body) {
         e.statusCode = 400;
         throw e;
       }
+      // A category being reparented under another top-level category must
+      // not itself already have children — otherwise the tree would become
+      // three levels deep, violating the same "max 2 levels" invariant.
+      const ownChildCount = await prisma.category.count({ where: { parentId: Number(id) } });
+      if (ownChildCount > 0) {
+        const e = new Error("category has subcategories of its own and cannot become a subcategory (max 2 levels)");
+        e.statusCode = 400;
+        throw e;
+      }
       data.parentId = parent.id;
     }
   }
@@ -386,6 +395,21 @@ export async function updateMyProduct(driverId, id, body) {
 export async function removeMyProduct(driverId, id) {
   const product = await assertOwnedProduct(driverId, id);
   const variantIds = product.variants.map((v) => v.id);
+  if (variantIds.length) {
+    // DriverInventoryItem.variant cascades on delete, which would otherwise
+    // silently wipe OTHER drivers' resale inventory rows for these variants
+    // (not just this owner's) the moment the variants are deleted below.
+    // Block the deletion instead, the same way removeMyCategory blocks a
+    // category that still has products/children.
+    const otherDriversCount = await prisma.driverInventoryItem.count({
+      where: { variantId: { in: variantIds }, driverId: { not: Number(driverId) } },
+    });
+    if (otherDriversCount > 0) {
+      const e = new Error("other drivers currently stock this product — it cannot be deleted");
+      e.statusCode = 409;
+      throw e;
+    }
+  }
   await prisma.$transaction(async (tx) => {
     if (variantIds.length) {
       await tx.driverInventoryItem.deleteMany({
@@ -495,6 +519,16 @@ export async function removeMyProductVariant(driverId, productId, variantId) {
   if (!variant || variant.productId !== Number(productId)) {
     const e = new Error("variant not found");
     e.statusCode = 404;
+    throw e;
+  }
+  // See removeMyProduct: deleting the variant cascades and would otherwise
+  // silently wipe other drivers' resale inventory rows for it.
+  const otherDriversCount = await prisma.driverInventoryItem.count({
+    where: { variantId: Number(variantId), driverId: { not: Number(driverId) } },
+  });
+  if (otherDriversCount > 0) {
+    const e = new Error("other drivers currently stock this variant — it cannot be deleted");
+    e.statusCode = 409;
     throw e;
   }
   await prisma.$transaction(async (tx) => {

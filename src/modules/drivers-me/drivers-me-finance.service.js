@@ -68,29 +68,36 @@ export async function createMyWithdrawal(driverId, body) {
     throw e;
   }
   const wallet = await ensureWallet(driverId, body?.currency || "IQD");
-  if (Number(wallet.balance) < amount) {
-    const e = new Error("insufficient wallet balance");
+  // The wallet's currency is authoritative — a request body claiming a
+  // different currency must not be allowed to produce a WithdrawRequest
+  // whose currency doesn't match the ledger it actually debited.
+  if (body?.currency && body.currency !== wallet.currency) {
+    const e = new Error(`Wallet currency is ${wallet.currency}, not ${body.currency}.`);
     e.statusCode = 400;
     throw e;
   }
-  const currency = body?.currency || wallet.currency || "IQD";
 
   return prisma.$transaction(async (tx) => {
-    const w = await tx.wallet.findUnique({ where: { userId: Number(driverId) } });
-    if (!w || w.balance < amount) {
+    // Atomic conditional UPDATE: the balance check and the debit happen as
+    // one DB statement, closing the race where two concurrent withdrawal
+    // requests could both read the same stale balance and both succeed.
+    const affected = await tx.$executeRaw`
+      UPDATE wallets SET balance = ROUND(balance - ${amount}, 2)
+      WHERE id = ${wallet.id} AND balance - ${amount} >= 0
+    `;
+    if (affected === 0) {
       const e = new Error("insufficient wallet balance");
       e.statusCode = 400;
       throw e;
     }
-    const newBal = Number((w.balance - amount).toFixed(2));
-    await tx.wallet.update({ where: { id: w.id }, data: { balance: newBal } });
+    const updated = await tx.wallet.findUnique({ where: { id: wallet.id } });
     await tx.walletHistory.create({
       data: {
-        walletId: w.id,
+        walletId: wallet.id,
         userId: Number(driverId),
         type: "debit",
         amount,
-        balance: newBal,
+        balance: updated.balance,
         description: "Withdrawal request",
         transactionType: "withdraw_request",
       },
@@ -99,7 +106,7 @@ export async function createMyWithdrawal(driverId, body) {
       data: {
         userId: Number(driverId),
         amount,
-        currency,
+        currency: wallet.currency,
         status: 0,
       },
     });
