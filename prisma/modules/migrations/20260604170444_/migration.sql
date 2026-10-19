@@ -8,7 +8,7 @@
 
 */
 -- AlterTable
-ALTER TABLE `product_orders` MODIFY `status` ENUM('NEW', 'PENDING', 'ACCEPTED', 'PICKED_UP', 'ON_THE_WAY', 'REJECTED', 'DELIVERED', 'CANCELLED') NOT NULL DEFAULT 'NEW';
+ALTER TABLE `Product_orders` MODIFY `status` ENUM('NEW', 'PENDING', 'ACCEPTED', 'PICKED_UP', 'ON_THE_WAY', 'REJECTED', 'DELIVERED', 'CANCELLED') NOT NULL DEFAULT 'NEW';
 
 -- AlterTable
 ALTER TABLE `users` MODIFY `last_location_update_at` TIMESTAMP NULL,
