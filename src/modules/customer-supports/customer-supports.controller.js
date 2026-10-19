@@ -49,9 +49,23 @@ export async function remove(req, res) {
   }
 }
 
+export async function stats(req, res) {
+  try {
+    const data = await service.stats();
+    return successResponse(res, data, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
 export async function addMessage(req, res) {
   try {
-    const row = await service.addChatMessage(req.params.id, req.body);
+    const ticket = await service.getById(req.params.id);
+    if (!ticket) return errorResponse(res, t("db.not_found", req.locale), 404);
+    const row = await service.addChatMessage(req.params.id, {
+      message: req.body.message,
+      senderType: req.body.senderType || "admin",
+    });
     return successResponse(res, row, t("common.created", req.locale), 201);
   } catch (e) {
     return errorResponse(res, e.message, 500);

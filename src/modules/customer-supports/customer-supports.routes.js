@@ -15,6 +15,7 @@ r.post("/me/:id/messages", authenticate, ctrl.addMessageMine);
 
 // ── Admin-only ─────────────────────────────────────────────────────────────
 r.get("/", authenticate, requireResourceAccess(PERM), validate(v.listQuerySchema), ctrl.list);
+r.get("/stats", authenticate, requireResourceAccess(PERM), ctrl.stats);
 r.post(
   "/:id/messages",
   authenticate,

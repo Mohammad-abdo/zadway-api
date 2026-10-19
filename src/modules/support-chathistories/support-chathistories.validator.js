@@ -11,6 +11,8 @@ export const listQuerySchema = z.object({
       limit: z.coerce.number().optional(),
       sort: z.string().optional(),
       q: z.string().optional(),
+      supportId: z.coerce.number().int().positive().optional(),
+      senderType: z.string().optional(),
     })
     .passthrough(),
 });

@@ -12,6 +12,15 @@ export async function list(req, res) {
   }
 }
 
+export async function stats(req, res) {
+  try {
+    const data = await service.stats(req.query);
+    return successResponse(res, data, t("common.success", req.locale));
+  } catch (e) {
+    return errorResponse(res, e.message, 500);
+  }
+}
+
 export async function getById(req, res) {
   try {
     const row = await service.getById(req.params.id);

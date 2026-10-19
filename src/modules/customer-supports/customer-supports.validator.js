@@ -47,7 +47,7 @@ export const updateSchema = z.object({
 export const supportMessageSchema = z.object({
   params: z.object({ id: z.coerce.number().int().positive() }),
   body: z.object({
-    message: z.string().optional(),
+    message: z.string().trim().min(1),
     senderType: z.string().optional(),
   }),
 });
